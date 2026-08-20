@@ -9,7 +9,7 @@ export default function MapLegend({ items = CATEGORIES, showSelf = true, positio
         position: 'absolute',
         ...(position === 'bottom-left' ? { bottom: 12, left: 12 } : { top: 12, right: 12 }),
         zIndex: 800,
-        background: 'rgba(11,18,32,0.85)',
+        background: 'rgba(26,26,26,0.85)',
         border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '8px 10px',

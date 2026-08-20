@@ -9,7 +9,7 @@ import { useGeolocation } from '../../lib/useGeolocation.js';
 import { makeCategoryIcon, makeSelfIcon, categoryColor } from '../../lib/mapIcons.js';
 import MapLegend from '../../components/MapLegend.jsx';
 
-const PIE_COLORS = ['#ff3366', '#ff7a45', '#f5a623', '#2ecc71'];
+const PIE_COLORS = ['#ff4d4d', '#ff7a45', '#f5a623', '#2ecc71'];
 // Fallback only used if the browser denies / can't resolve geolocation.
 const FALLBACK_CENTER = [19.1340, 72.9145];
 
@@ -151,10 +151,10 @@ export default function PulseBoard() {
               <XAxis dataKey="category" stroke="#8a99b4" />
               <YAxis stroke="#8a99b4" allowDecimals={false} />
               <Tooltip
-                contentStyle={{ background: '#121a2c', border: '1px solid #243049' }}
+                contentStyle={{ background: '#111118', border: '1px solid #23232e' }}
                 labelStyle={{ color: '#e6edf7' }}
               />
-              <Bar dataKey="n" fill="#4f9dff" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="n" fill="#5eb1ff" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
 

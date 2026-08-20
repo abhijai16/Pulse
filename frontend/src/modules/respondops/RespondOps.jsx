@@ -129,7 +129,7 @@ export default function RespondOps() {
               <div
                 style={{
                   position: 'absolute', inset: 0, zIndex: 1000,
-                  background: 'rgba(11,18,32,0.7)',
+                  background: 'rgba(22,22,22,0.7)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: 'var(--text)', fontSize: 14,
                   backdropFilter: 'blur(2px)',
@@ -229,8 +229,8 @@ export default function RespondOps() {
 
               {/* FEATURE 1: AI Triage block */}
               <div style={{
-                background: 'rgba(79,157,255,0.08)',
-                border: '1px solid rgba(79,157,255,0.4)',
+                background: 'rgba(94,177,255,0.08)',
+                border: '1px solid rgba(94,177,255,0.4)',
                 borderRadius: 8, padding: 12, marginBottom: 14,
               }}>
                 <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>

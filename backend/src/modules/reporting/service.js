@@ -89,9 +89,14 @@ export async function getByTrackingId(trackingId) {
 }
 
 export async function listRecent(limit = 20) {
+  // Includes resolved_at + response_minutes so the landing "Recent activity"
+  // row can show "Fire — Library Block, resolved in 12 min".
   const { rows } = await query(
     `SELECT id, tracking_id, category, severity, status, location_label, created_at,
-            ai_severity, ai_confidence, ai_reasons
+            ai_severity, ai_confidence, ai_reasons, resolved_at,
+            CASE WHEN resolved_at IS NOT NULL
+                 THEN ROUND(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 60.0)::int
+                 ELSE NULL END AS response_minutes
        FROM incidents
       ORDER BY created_at DESC
       LIMIT $1`,
