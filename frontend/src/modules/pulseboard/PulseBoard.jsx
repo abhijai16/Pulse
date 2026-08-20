@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { api } from '../../lib/api.js';
 import { socket } from '../../lib/socket.js';
 import { useGeolocation } from '../../lib/useGeolocation.js';
+import { makeCategoryIcon, makeSelfIcon, categoryColor } from '../../lib/mapIcons.js';
+import MapLegend from '../../components/MapLegend.jsx';
 
 const PIE_COLORS = ['#ff3366', '#ff7a45', '#f5a623', '#2ecc71'];
 // Fallback only used if the browser denies / can't resolve geolocation.
@@ -20,6 +22,19 @@ export default function PulseBoard() {
     fallback: { lat: FALLBACK_CENTER[0], lng: FALLBACK_CENTER[1] },
   });
   const mapCenter = [userCoords.lat, userCoords.lng];
+
+  // Live self-location for the green "you are here" marker.
+  const [selfPos, setSelfPos] = useState(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setSelfPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
   const [broadcastForm, setBroadcastForm] = useState({
     lat: FALLBACK_CENTER[0], lng: FALLBACK_CENTER[1], radiusM: 500, message: '',
     severity: 'high', durationMinutes: 30,
@@ -104,18 +119,28 @@ export default function PulseBoard() {
               attribution='&copy; OpenStreetMap'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+
+            {/* Self marker — green, pulsing, live-updating */}
+            {(selfPos || userCoords) && (
+              <Marker
+                position={[selfPos?.lat ?? userCoords.lat, selfPos?.lng ?? userCoords.lng]}
+                icon={makeSelfIcon()}
+                zIndexOffset={1000}
+              >
+                <Popup>📍 You (admin)</Popup>
+              </Marker>
+            )}
+
+            {/* Category-colored heatmap dots */}
             {heatmap.map((p) => (
-              <CircleMarker
+              <Marker
                 key={p.id}
-                center={[p.lat, p.lng]}
-                radius={p.severity === 'critical' ? 18 : p.severity === 'high' ? 14 : 10}
-                pathOptions={{
-                  color: 'transparent',
-                  fillColor: '#ff3366',
-                  fillOpacity: 0.25,
-                }}
+                position={[p.lat, p.lng]}
+                icon={makeCategoryIcon(p.category, { size: 14 })}
               />
             ))}
+
+            <MapLegend />
           </MapContainer>
         </div>
 

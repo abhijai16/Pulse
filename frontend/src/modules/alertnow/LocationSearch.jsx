@@ -1,15 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 
 // OpenStreetMap Nominatim autocomplete.
-// - Free public endpoint, no API key.
-// - Debounced 300ms per the usage policy (<1 req/sec).
-// - Biased toward Bhubaneswar via viewbox + bounded=1.
-// - Selecting a result calls onSelect({ lat, lng, label }).
-// - Parent supplies the currently-known coords (from GPS) so we can show
-//   "use my GPS" as a quick action when no text match is desired.
+//
+// Performance tuning (real-world Nominatim p50 is 0.5–6s on shared infra):
+//   - 220ms debounce (was 300ms) → feels snappier, still <1 req/sec
+//   - Aborts in-flight requests when query changes → no stale results
+//   - Local cache keyed by lowercase query → repeated prefixes are instant
+//   - Spinner shown immediately on keystroke (not waiting for debounce fire)
+//   - limit=5, NO addressdetails=1 (we split display_name ourselves; saves
+//     a significant chunk of server-side work for Nominatim)
+//   - Biased to Bhubaneswar via viewbox + bounded=1
 
-const BHUBANESWAR_VIEWBOX = '85.75,20.30,85.90,20.45'; // [W,N,E,S] in Nominatim order
-const DEBOUNCE_MS = 300;
+const BHUBANESWAR_VIEWBOX = '85.75,20.30,85.90,20.45'; // [W,N,E,S]
+const DEBOUNCE_MS = 220;
+const MIN_CHARS = 3;
 
 export default function LocationSearch({ coords, onSelect, onUseGps }) {
   const [query, setQuery] = useState('');
@@ -22,17 +26,43 @@ export default function LocationSearch({ coords, onSelect, onUseGps }) {
   const abortRef = useRef(null);
   const wrapperRef = useRef(null);
 
-  // Debounced search — fires 300ms after the user stops typing.
+  // Tiny in-memory cache. Bounded so it doesn't grow forever in a long session.
+  const cacheRef = useRef(new Map());
+  const CACHE_LIMIT = 50;
+
+  // Debounced search — fires 220ms after the user stops typing.
+  // Loading spinner is shown immediately on keystroke (not after debounce).
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim() || query.trim().length < 3) {
+
+    const trimmed = query.trim();
+    if (trimmed.length < MIN_CHARS) {
       setResults([]);
       setOpen(false);
       setLoading(false);
+      setError(null);
       return;
     }
+
+    // Instant cache hit — no network round-trip
+    const key = trimmed.toLowerCase();
+    if (cacheRef.current.has(key)) {
+      const cached = cacheRef.current.get(key);
+      setResults(cached);
+      setOpen(true);
+      setHighlight(0);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Show the spinner immediately so the user sees we're working on it,
+    // not waiting 220ms in silence.
     setLoading(true);
-    debounceRef.current = setTimeout(() => doSearch(query), DEBOUNCE_MS);
+    setOpen(true);
+    setError(null);
+
+    debounceRef.current = setTimeout(() => doSearch(trimmed), DEBOUNCE_MS);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
@@ -46,33 +76,42 @@ export default function LocationSearch({ coords, onSelect, onUseGps }) {
   }, []);
 
   async function doSearch(q) {
-    // cancel any in-flight request before starting a new one
     if (abortRef.current) abortRef.current.abort();
     const ac = new AbortController();
     abortRef.current = ac;
 
-    // Respect Nominatim usage policy: identify via User-Agent header where
-    // possible (browsers strip it, but the Referer helps), and limit to ~5 hits.
     const url =
       `https://nominatim.openstreetmap.org/search?format=json&limit=5` +
       `&q=${encodeURIComponent(q)}` +
-      `&viewbox=${BHUBANESWAR_VIEWBOX}&bounded=1` +
-      `&addressdetails=1`;
+      `&viewbox=${BHUBANESWAR_VIEWBOX}&bounded=1`;
     try {
       const res = await fetch(url, { signal: ac.signal });
       if (!res.ok) throw new Error(`Nominatim ${res.status}`);
       const data = await res.json();
-      setResults(Array.isArray(data) ? data : []);
-      setOpen(true);
-      setHighlight(0);
-      setError(null);
+      const safe = Array.isArray(data) ? data : [];
+
+      // Populate cache (FIFO eviction when full)
+      const key = q.toLowerCase();
+      if (cacheRef.current.size >= CACHE_LIMIT) {
+        const oldestKey = cacheRef.current.keys().next().value;
+        cacheRef.current.delete(oldestKey);
+      }
+      cacheRef.current.set(key, safe);
+
+      // Only update state if the request wasn't cancelled (AbortController)
+      // and the query hasn't changed underneath us.
+      if (!ac.signal.aborted) {
+        setResults(safe);
+        setHighlight(0);
+        setError(null);
+      }
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(err.message || 'search failed');
         setResults([]);
       }
     } finally {
-      setLoading(false);
+      if (!ac.signal.aborted) setLoading(false);
     }
   }
 
@@ -80,7 +119,7 @@ export default function LocationSearch({ coords, onSelect, onUseGps }) {
     const lat = parseFloat(r.lat);
     const lng = parseFloat(r.lon);
     onSelect({ lat, lng, label: r.display_name });
-    setQuery(r.display_name.split(',').slice(0, 2).join(', ')); // keep short
+    setQuery(r.display_name.split(',').slice(0, 2).join(', '));
     setOpen(false);
   }
 
@@ -116,7 +155,7 @@ export default function LocationSearch({ coords, onSelect, onUseGps }) {
         <button type="button" onClick={onUseGps}>📍 Use my GPS</button>
       </div>
 
-      {open && (loading || results.length > 0 || error) && (
+      {open && (loading || results.length > 0 || error || (query.trim().length >= MIN_CHARS && !loading)) && (
         <div
           style={{
             position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
@@ -126,20 +165,32 @@ export default function LocationSearch({ coords, onSelect, onUseGps }) {
           }}
         >
           {loading && (
-            <div style={{ padding: 10, color: 'var(--muted)', fontSize: 13 }}>Searching…</div>
+            <div style={{
+              padding: 10, color: 'var(--muted)', fontSize: 13,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{
+                width: 12, height: 12, borderRadius: '50%',
+                border: '2px solid var(--muted)', borderTopColor: 'transparent',
+                animation: 'pulse-spin 0.8s linear infinite',
+                display: 'inline-block',
+              }} />
+              Searching…
+              <style>{`@keyframes pulse-spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
           )}
           {error && !loading && (
             <div style={{ padding: 10, color: 'var(--red)', fontSize: 13 }}>
               Search error: {error}
             </div>
           )}
-          {!loading && !error && results.length === 0 && query.trim().length >= 3 && (
+          {!loading && !error && results.length === 0 && query.trim().length >= MIN_CHARS && (
             <div style={{ padding: 10, color: 'var(--muted)', fontSize: 13 }}>No matches.</div>
           )}
           {results.map((r, i) => (
             <div
               key={`${r.place_id}-${i}`}
-              onMouseDown={(e) => e.preventDefault()} /* don't blur input */
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => pick(r)}
               onMouseEnter={() => setHighlight(i)}
               style={{

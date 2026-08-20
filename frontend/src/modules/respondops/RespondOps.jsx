@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { api } from '../../lib/api.js';
 import { socket } from '../../lib/socket.js';
 import { useGeolocation } from '../../lib/useGeolocation.js';
-
-const SEV_COLOR = {
-  critical: '#ff3366',
-  high:     '#ff7a45',
-  medium:   '#f5a623',
-  low:      '#2ecc71',
-};
+import { makeCategoryIcon, makeSelfIcon, categoryColor } from '../../lib/mapIcons.js';
+import MapLegend from '../../components/MapLegend.jsx';
 
 // Fallback only used if the browser denies / can't resolve geolocation.
 // (Demo dataset is anchored at Mumbai coordinates.)
@@ -22,6 +17,19 @@ export default function RespondOps() {
   const [error, setError] = useState(null);
   const { coords: userCoords, status: geoStatus } = useGeolocation({ fallback: { lat: FALLBACK_CENTER[0], lng: FALLBACK_CENTER[1] } });
   const mapCenter = [userCoords.lat, userCoords.lng];
+
+  // Live self-location: also subscribe to watchPosition so the green marker
+  // moves as the dispatcher moves. Falls back gracefully if unavailable.
+  const [selfPos, setSelfPos] = useState(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setSelfPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
 
   async function refresh() {
     try {
@@ -134,29 +142,40 @@ export default function RespondOps() {
               attribution='&copy; OpenStreetMap'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            {/* Self marker — green, pulsing, live-updating. Visible whenever
+                we have a location (real or fallback). */}
+            {(selfPos || userCoords) && (
+              <Marker
+                position={[selfPos?.lat ?? userCoords.lat, selfPos?.lng ?? userCoords.lng]}
+                icon={makeSelfIcon()}
+                zIndexOffset={1000}
+              >
+                <Popup>📍 You (dispatcher)</Popup>
+              </Marker>
+            )}
+
+            {/* Category-colored incident markers */}
             {incidents.map((i) => (
-              <CircleMarker
+              <Marker
                 key={i.id}
-                center={[i.lat, i.lng]}
-                radius={i.severity === 'critical' ? 14 : i.severity === 'high' ? 11 : 9}
-                pathOptions={{
-                  color: SEV_COLOR[i.severity] || '#888',
-                  fillColor: SEV_COLOR[i.severity] || '#888',
-                  fillOpacity: 0.6,
-                  weight: 2,
-                }}
+                position={[i.lat, i.lng]}
+                icon={makeCategoryIcon(i.category, {
+                  size: i.severity === 'critical' ? 22 : i.severity === 'high' ? 19 : 16,
+                })}
                 eventHandlers={{ click: () => setSelected(i) }}
               >
                 <Popup>
                   <div style={{ minWidth: 160 }}>
-                    <strong>{i.category.toUpperCase()}</strong>
+                    <strong style={{ color: categoryColor(i.category) }}>{i.category.toUpperCase()}</strong>
                     <span style={{ marginLeft: 8 }} className={`badge ${i.severity}`}>{i.severity}</span>
                     <div style={{ marginTop: 6, fontSize: 12 }}>{i.location_label}</div>
                     <div style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{i.tracking_id}</div>
                   </div>
                 </Popup>
-              </CircleMarker>
+              </Marker>
             ))}
+
+            <MapLegend />
           </MapContainer>
         </div>
 
