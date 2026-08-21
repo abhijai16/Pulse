@@ -1,7 +1,7 @@
-// Tiny in-process event bus so modules can emit and other modules can react
-// without importing each other directly. This is the only cross-module coupling
-// — and it would be replaced by a queue (Redis/SQS) when extracting a module
-// into its own service.
+// tiny in-process event bus. lets modules talk without importing
+// each other. only real cross-module coupling in the project. if we
+// ever split modules into separate services this gets swapped for
+// redis pub/sub or sqs.
 
 const handlers = new Map();
 

@@ -1,22 +1,17 @@
-// Gmail SMTP transport. Uses an App Password (NOT the account password)
-// — set EMAIL_USER and EMAIL_APP_PASSWORD in the environment.
+// gmail SMTP. uses an App Password (not the account password) —
+// set EMAIL_USER and EMAIL_APP_PASSWORD in .env.
 //
-// We deliberately create a single shared transporter at module load
-// rather than per-send. Nodemailer's SMTP transport is built around a
-// connection pool; reusing it avoids a TLS handshake on every email.
+// single shared transporter at module load. nodemailer pools the
+// connection internally; reusing it avoids a TLS handshake per send.
 //
-// If creds are missing we still export `sendMail` — it just logs a
-// warning and resolves. That keeps the demo runnable when someone
-// forgets to set env vars, and lets callers always log the payload
-// as a fallback.
+// if creds are missing we still export sendMail — it just logs and
+// resolves, so the demo runs even when someone forgot the env vars.
 import nodemailer from 'nodemailer';
 
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_APP_PASSWORD = process.env.EMAIL_APP_PASSWORD;
-// Override for development without touching code. Defaults to Gmail.
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-// Address shown as the sender. Falls back to EMAIL_USER.
 const FROM_ADDRESS = process.env.EMAIL_FROM || EMAIL_USER || 'no-reply@pulse.local';
 const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Pulse';
 
@@ -27,7 +22,7 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
-    secure: SMTP_PORT === 465, // implicit TLS for 465, STARTTLS otherwise
+    secure: SMTP_PORT === 465, // implicit TLS on 465, STARTTLS otherwise
     auth: {
       user: EMAIL_USER,
       pass: EMAIL_APP_PASSWORD,
@@ -41,13 +36,12 @@ if (EMAIL_USER && EMAIL_APP_PASSWORD) {
   );
 }
 
-// Generic send. All concrete templates (OTP, volunteer request, etc.)
-// are thin wrappers around this — it owns the transport, the fallback
-// logging, and the never-throw contract.
+// generic send. all the templates (otp, volunteer request, etc.)
+// are thin wrappers around this.
 export async function sendMail({ to, subject, text, html, tag = 'mail' }) {
-  // Always log the payload — useful in dev, and acts as a safety net
-  // when the SMTP send fails so the demo never gets stuck. The `tag`
-  // lets us grep one kind of mail in the console (e.g. `[email-otp]`).
+  // always log the payload. useful in dev, and a safety net when SMTP
+  // fails so the demo doesn't get stuck. `tag` lets us grep one kind
+  // of mail in the console (e.g. `[email-otp]`).
   console.log(`[${tag}] -> ${to} | ${subject}`);
 
   if (!transportReady) return { sent: false, reason: 'no_credentials' };
@@ -63,14 +57,14 @@ export async function sendMail({ to, subject, text, html, tag = 'mail' }) {
     console.log(`[mailer] ${tag} sent to ${to} (messageId=${info.messageId})`);
     return { sent: true, messageId: info.messageId };
   } catch (err) {
-    // Don't crash the caller — the console log above means a developer
-    // can still see what would have been sent during the demo.
+    // don't crash the caller. the log line above means a dev can
+    // still see what would have been sent during the demo.
     console.error(`[mailer] ${tag} SMTP send failed for ${to}:`, err.message);
     return { sent: false, reason: 'smtp_error', error: err.message };
   }
 }
 
-// ===== Templates =====
+// ===== templates =====
 
 // OTP verification email (10-minute code, 6 digits).
 const OTP_TTL_MIN_DEFAULT = 10;
@@ -95,8 +89,8 @@ const otpHtml = (code, minutes) => `
 `;
 
 export async function sendOtp({ to, code, ttlMinutes = OTP_TTL_MIN_DEFAULT }) {
-  // Also dump the code on its own line so the dev can grab it from
-  // a single `grep` even when subject/HTML rendering hides the rest.
+  // also dump the code on its own line so a dev can grep it out
+  // even when the subject/HTML hides it
   console.log(`[email-otp] code for ${to}: ${code} (ttl=${ttlMinutes}m)`);
   return sendMail({
     to,
@@ -107,9 +101,9 @@ export async function sendOtp({ to, code, ttlMinutes = OTP_TTL_MIN_DEFAULT }) {
   });
 }
 
-// "Help needed nearby" notification for verified users within 200m of a
-// medical or harassment incident. The recipient is a real person, not
-// the reporter — the link points at the public tracking page.
+// "help needed nearby" email — goes to verified users within 200m of
+// a medical/harassment incident. recipient is a real person, not the
+// reporter. link points at the public tracking page.
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
 const volunteerText = ({ name, incident, appUrl }) => {
@@ -162,8 +156,8 @@ export async function sendVolunteerRequest({ to, name, incident }) {
   });
 }
 
-// Exposed so a future test/health check can verify the transport
-// without actually sending mail.
+// exposed so a future health check can verify the transport without
+// actually sending anything
 export async function verifyTransport() {
   if (!transportReady) return { ok: false, reason: 'no_credentials' };
   try {

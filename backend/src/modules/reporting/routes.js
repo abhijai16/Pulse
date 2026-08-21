@@ -24,7 +24,7 @@ const upload = multer({
 
 export const reportingRouter = Router();
 
-// POST /api/reports  — citizen submits an incident (with optional photo)
+// POST /api/reports — citizen submits an incident (photo optional)
 reportingRouter.post('/reports', upload.single('photo'), async (req, res, next) => {
   try {
     const body = req.body || {};
@@ -44,7 +44,7 @@ reportingRouter.post('/reports', upload.single('photo'), async (req, res, next) 
   }
 });
 
-// GET /api/reports/:trackingId  — reporter checks status
+// GET /api/reports/:trackingId — reporter checks status
 reportingRouter.get('/reports/:trackingId', async (req, res, next) => {
   try {
     const incident = await getByTrackingId(req.params.trackingId);
@@ -55,7 +55,7 @@ reportingRouter.get('/reports/:trackingId', async (req, res, next) => {
   }
 });
 
-// GET /api/reports  — recent submissions (used by landing page ticker)
+// GET /api/reports — recent submissions (used by the landing ticker)
 reportingRouter.get('/reports', async (_req, res, next) => {
   try {
     res.json(await listRecent(10));
@@ -64,9 +64,9 @@ reportingRouter.get('/reports', async (_req, res, next) => {
   }
 });
 
-// GET /api/responders/nearby?lat=&lng=&limit=  — public mirror of the
-// dispatch router's nearby endpoint so the AlertNow "Nearest responders"
-// panel works for unauthenticated reporters too. Same SQL, same shape.
+// public mirror of the dispatch router's nearby endpoint so the
+// "Nearest responders" panel works for anonymous reporters too. same
+// SQL, same shape.
 reportingRouter.get('/responders/nearby', async (req, res, next) => {
   try {
     const lat = Number(req.query.lat);

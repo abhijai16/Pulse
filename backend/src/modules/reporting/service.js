@@ -5,9 +5,9 @@ import { classifySeverity } from './severity.js';
 import { triage } from './triage.js';
 import { emitReportingEvent } from '../../events.js';
 
-// Anonymous or harassment reports get description encrypted so even DB dumps
-// don't reveal reporter identity or sensitive phrasing. The reporting module
-// owns this — dispatch/analytics only see decrypted text via the API.
+// anonymous + harassment reports get their description encrypted at
+// rest. dispatch/analytics never see plaintext unless they go through
+// the API. only the reporting module touches the encryption layer.
 
 export async function submitReport(input) {
   const {
@@ -29,15 +29,14 @@ export async function submitReport(input) {
   const severity = classifySeverity(category, description);
   const trackingId = `PULSE-${uuid().slice(0, 8).toUpperCase()}`;
 
-  // AI Triage — runs in addition to the legacy classifier, returns explainable
-  // reasons that the RespondOps console can surface to the dispatcher.
+  // AI triage on top of the legacy classifier. returns reasons +
+  // confidence so the dispatch console can show "why".
   const ai = triage(category, description);
 
-  // Encrypt description when reporter chose anonymity or category is sensitive.
+  // encrypt when anonymous or when the category is sensitive.
   const sensitive = isAnonymous || category === 'harassment';
   const reporterToken = sensitive ? encryptField(description) : null;
-  // For non-sensitive, we still store description in plaintext column for
-  // dispatch readability — encryption is opt-in via anonymous flag.
+  // non-sensitive stuff stays in plaintext — dispatch needs to read it.
 
   const { rows } = await query(
     `INSERT INTO incidents
@@ -64,8 +63,8 @@ export async function submitReport(input) {
     ]
   );
 
-  // Include AI fields on the socket event payload so RespondOps sees them
-  // without a second round-trip.
+  // stick AI fields on the socket payload so RespondOps doesn't need
+  // a second round-trip to get them.
   const out = { ...rows[0], ai_reasons: ai.reasons, ai_confidence: ai.confidence, ai_severity: ai.severity };
   emitReportingEvent('report:submitted', out);
   return out;
@@ -83,14 +82,13 @@ export async function getByTrackingId(trackingId) {
   if (!rows[0]) return null;
   const incident = rows[0];
 
-  // Include last 3 status changes (we don't have a status_history table yet,
-  // so derive from updated_at / resolved_at for now — keeps schema lean).
+  // no status_history table yet. if we ever need it, this is the spot.
   return incident;
 }
 
 export async function listRecent(limit = 20) {
-  // Includes resolved_at + response_minutes so the landing "Recent activity"
-  // row can show "Fire — Library Block, resolved in 12 min".
+  // response_minutes is computed in SQL so the landing ticker can show
+  // "Fire — Library Block, resolved in 12 min" without a second query.
   const { rows } = await query(
     `SELECT id, tracking_id, category, severity, status, location_label, created_at,
             ai_severity, ai_confidence, ai_reasons, resolved_at,

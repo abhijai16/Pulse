@@ -1,7 +1,8 @@
-// Single Socket.io hub. Three event channels:
-//   incident:new      — AlertNow → RespondOps map + PulseBoard tiles
-//   incident:status   — RespondOps → AlertNow tracking page
-//   broadcast:alert   — PulseBoard → every connected client (radius push)
+// single socket.io hub. channels we fire:
+//   incident:new       AlertNow -> RespondOps map + PulseBoard tiles
+//   incident:status    RespondOps -> AlertNow tracking page
+//   incident:severity  dispatcher override -> every RespondOps console
+//   broadcast:alert    PulseBoard -> every connected client (radius push)
 
 import { Server } from 'socket.io';
 
@@ -13,7 +14,8 @@ export function initSocket(httpServer, allowedOrigin) {
   });
 
   io.on('connection', (socket) => {
-    // A reporter can join a tracking room so they only hear their own status updates
+    // reporter joins their own tracking room so they only see their
+    // own status updates
     socket.on('tracking:join', (trackingId) => {
       if (typeof trackingId === 'string' && trackingId.length < 64) {
         socket.join(`tracking:${trackingId}`);
@@ -33,8 +35,8 @@ export function emitIncidentStatus(trackingId, payload) {
   io?.emit('incident:status', { ...payload, tracking_id: trackingId });
 }
 
-// FEATURE 1: AI Triage — fire when a dispatcher overrides severity so every
-// RespondOps console updates the badge live.
+// fires when a dispatcher overrides AI-suggested severity. every
+// RespondOps console listens and updates its badge live.
 export function emitIncidentSeverity(payload) {
   io?.emit('incident:severity', payload);
 }
@@ -43,9 +45,9 @@ export function emitBroadcastAlert(broadcast) {
   io?.emit('broadcast:alert', broadcast);
 }
 
-// FEATURE: Nearby-volunteer pledge — when a user taps "I'm responding"
-// on the tracking page, every connected dispatcher console updates its
-// "Volunteers en route" count + name list live, no refresh needed.
+// fired when a user taps "I'm responding" on the tracking page.
+// dispatch consoles use it to bump the "volunteers en route" counter
+// without a refresh.
 export function emitVolunteerJoined({ incidentId, trackingId, count, pledgers }) {
   io?.emit('incident:volunteer_joined', { incidentId, trackingId, count, pledgers });
 }

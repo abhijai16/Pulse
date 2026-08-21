@@ -27,7 +27,7 @@ const ORIGIN = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
 
 app.use(cors({
   origin: ORIGIN,
-  credentials: true, // allow the session cookie to round-trip from the SPA
+  credentials: true, // let the session cookie come through from the SPA
 }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -46,9 +46,8 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-// Module routers — each is fully self-contained.
-// AlertNow (reporting) stays public so anonymous reporting still works.
-// RespondOps (dispatch) and PulseBoard (analytics) require login.
+// module routers. reporting is left open so anonymous reports work
+// without login; the rest sit behind requireAuth.
 app.use('/api', authRouter);
 app.use('/api', reportingRouter);
 app.use('/api', requireAuth, dispatchRouter);
@@ -56,10 +55,10 @@ app.use('/api', requireAuth, analyticsRouter);
 app.use('/api', requireAuth, communityRouter);
 app.use('/api', requireAuth, profileRouter);
 
-// 404
+// 404 catch-all for /api
 app.use('/api', (_req, res) => res.status(404).json({ error: 'not_found' }));
 
-// Error handler — keep last
+// keep this last
 app.use((err, _req, res, _next) => {
   console.error('[api error]', err);
   res.status(err.status || 500).json({ error: err.message || 'internal_error' });
@@ -67,15 +66,15 @@ app.use((err, _req, res, _next) => {
 
 initSocket(httpServer, ORIGIN);
 
-// Cross-module event fan-out: AlertNow reports → RespondOps listens
-// Done as a tiny event bus the modules themselves emit to.
+// wire up the cross-module event bus. modules fire these and we
+// forward them to socket.io so the consoles update in real time.
 import { onReportingEvent, onDispatchEvent, onAnalyticsEvent } from './events.js';
 
 onReportingEvent('report:submitted', (incident) => {
   emitIncidentNew(incident);
-  // Nearby-volunteer notifications: only fires for medical/harassment
-  // and only if any verified user is within 200m. Fire-and-forget so
-  // a slow SMTP connection never delays the response to the reporter.
+  // fire-and-forget: a slow SMTP call must not delay the response to
+  // the reporter. only triggers for medical/harassment, and only if
+  // there's a verified user within 200m.
   notifyNearbyVolunteers(incident).catch((e) =>
     console.error('[community] notifyNearbyVolunteers failed', e),
   );

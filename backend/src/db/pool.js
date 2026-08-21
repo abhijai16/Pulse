@@ -15,6 +15,7 @@ export async function query(text, params) {
   const res = await pool.query(text, params);
   const ms = Date.now() - start;
   if (process.env.LOG_QUERIES === '1') {
+    // noisy, only on when debugging
     console.log('[db]', { ms, rows: res.rowCount, text: text.split('\n')[0] });
   }
   return res;

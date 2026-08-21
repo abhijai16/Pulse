@@ -10,7 +10,7 @@ import {
 
 export const dispatchRouter = Router();
 
-// GET /api/incidents?status=active  — RespondOps map markers
+// GET /api/incidents?status=active — RespondOps map markers
 dispatchRouter.get('/incidents', async (req, res, next) => {
   try {
     const status = req.query.status || 'active';
@@ -20,7 +20,7 @@ dispatchRouter.get('/incidents', async (req, res, next) => {
   }
 });
 
-// GET /api/responders  — available roster
+// GET /api/responders — roster
 dispatchRouter.get('/responders', async (_req, res, next) => {
   try {
     res.json(await listResponders());
@@ -30,9 +30,9 @@ dispatchRouter.get('/responders', async (_req, res, next) => {
 });
 
 // /api/responders/nearby lives in the reporting router (public) so
-// anonymous reporters can see who's closest before submitting.
+// anonymous reports can still see who's nearby.
 
-// POST /api/dispatches  — assign a responder to an incident
+// POST /api/dispatches — assign a responder to an incident
 dispatchRouter.post('/dispatches', async (req, res, next) => {
   try {
     const { incidentId, responderId, note } = req.body || {};
@@ -43,7 +43,7 @@ dispatchRouter.post('/dispatches', async (req, res, next) => {
   }
 });
 
-// PATCH /api/incidents/:id/status  — dispatched | on_scene | resolved
+// PATCH /api/incidents/:id/status — dispatched | on_scene | resolved
 dispatchRouter.patch('/incidents/:id/status', async (req, res, next) => {
   try {
     const id = Number(req.params.id);
@@ -55,7 +55,8 @@ dispatchRouter.patch('/incidents/:id/status', async (req, res, next) => {
   }
 });
 
-// Convenience: combined payload for the RespondOps console (incidents + responders)
+// combined payload for the RespondOps console so the page can hydrate
+// with one call
 dispatchRouter.get('/console', async (_req, res, next) => {
   try {
     const [incidents, responders] = await Promise.all([
@@ -68,8 +69,8 @@ dispatchRouter.get('/console', async (_req, res, next) => {
   }
 });
 
-// ====== FEATURE 1: AI Triage — dispatcher override ======
-// PATCH /api/incidents/:id/severity  body: { severity: 'critical'|'high'|'medium'|'low' }
+// AI Triage — dispatcher overrides the AI-suggested severity
+// PATCH /api/incidents/:id/severity  body: { severity }
 dispatchRouter.patch('/incidents/:id/severity', async (req, res, next) => {
   try {
     const id = Number(req.params.id);

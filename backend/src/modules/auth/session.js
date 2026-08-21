@@ -1,6 +1,6 @@
-// Server-side session store. In-memory Map keeps the dep surface small;
-// fine for a single-node campus deployment. Sessions are signed cookies
-// carrying just the session id — the user record lives on the server.
+// server-side session store. in-memory map keeps deps small. fine
+// for a single-node campus deploy. the cookie carries just the sid,
+// the user record lives here.
 import crypto from 'node:crypto';
 
 const SECRET = process.env.SESSION_SECRET || 'pulse-dev-session-secret-change-me';
@@ -50,7 +50,7 @@ export function readSessionUserId(req) {
   if (!sid) return null;
   const s = sessions.get(sid);
   if (!s) return null;
-  // expiry sweep
+  // lazy expiry sweep on read
   if (Date.now() - s.createdAt > TTL_MS) {
     sessions.delete(sid);
     return null;

@@ -1,8 +1,7 @@
-// In-memory OTP store. Codes are 6 digits, expire in 10 minutes, and
-// are stored as sha256(code + email) so a memory dump doesn't yield
-// usable codes. We deliberately keep this out of Postgres: the codes
-// are throwaway, short-lived, and we'd otherwise need a row-per-attempt
-// cleanup job. Single-node only — promote to Redis if we scale out.
+// in-memory OTP store. 6 digits, 10 min ttl, stored as sha256(code+email)
+// so a memory dump doesn't yield usable codes. kept out of Postgres on
+// purpose — codes are throwaway and short-lived, no point running a
+// cleanup job. single-node only. move to redis if we scale out.
 import crypto from 'node:crypto';
 import { sendOtp } from './mailer.js';
 
@@ -20,7 +19,7 @@ function hashCode(code, emailLower) {
 }
 
 function genCode() {
-  // crypto.randomInt is uniform; pad to 6 digits with leading zeros.
+  // randomInt is uniform, pad to 6 with leading zeros
   return crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
 }
 
@@ -32,17 +31,16 @@ export function issueOtp(email) {
     expiresAt: Date.now() + OTP_TTL_MS,
     attempts: 0,
   });
-  // Fire-and-forget: sendOtp logs to the console itself, so even if
-  // SMTP fails the code is recoverable for the demo. The call is
-  // intentionally not awaited — issuance must not block on email
-  // delivery, and route handlers don't care about the send result.
+  // fire-and-forget. sendOtp logs the code on its own line, so even
+  // if SMTP fails the dev can still grab it. we don't await — issuance
+  // must not block on email delivery, and routes don't care.
   sendOtp({ to: key, code, ttlMinutes: OTP_TTL_MIN }).catch((err) => {
     console.error(`[email-otp] sendOtp threw for ${key}:`, err);
   });
   return code;
 }
 
-// Resend replaces any existing code for that email.
+// resend just replaces whatever's in the map
 export function resendOtp(email) {
   return issueOtp(email);
 }
@@ -58,20 +56,20 @@ export function consumeOtp(email, code) {
   }
 
   entry.attempts += 1;
-  // Cap reached once we've exceeded the budget — delete the entry so
-  // the user must request a fresh code rather than guess indefinitely.
+  // over the budget — drop the entry so the user has to ask for a
+  // fresh code instead of guessing forever
   if (entry.attempts >= MAX_ATTEMPTS) {
     otps.delete(key);
     return { ok: false, reason: 'too_many_attempts' };
   }
 
   const supplied = hashCode(code, key);
-  // timingSafeEqual requires equal-length buffers; hashCode produces
-  // 32 bytes (sha256) on both sides, so lengths match by construction.
+  // timingSafeEqual needs equal-length buffers. both sides are sha256
+  // (32 bytes) so they match by construction.
   const ok = crypto.timingSafeEqual(entry.codeHash, supplied);
   if (!ok) return { ok: false, reason: 'mismatch' };
 
-  // one-shot: delete on success
+  // one-shot, delete on success
   otps.delete(key);
   return { ok: true };
 }

@@ -1,13 +1,13 @@
 import crypto from 'crypto';
 
-// AES-256-GCM. Key must be 32 bytes (base64-encoded in env).
+// AES-256-GCM. key from env, padded/truncated to 32 bytes.
 const KEY = Buffer.from(
   process.env.ENCRYPTION_KEY || 'pulse-demo-key-replace-me-in-production-32b!',
   'utf8'
 ).slice(0, 32);
 
 if (KEY.length < 32) {
-  // pad to 32 bytes if a short string was supplied
+  // pad out to 32 bytes if someone set a short string
   const padded = Buffer.alloc(32);
   KEY.copy(padded);
   process.env.ENCRYPTION_KEY = padded.toString('base64');

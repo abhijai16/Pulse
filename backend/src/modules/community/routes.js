@@ -1,9 +1,7 @@
-// Community (civilian responder) endpoints. Two responsibilities:
-//   1. Record a "I'm responding" pledge against an incident.
-//   2. Read aggregate pledge state for an incident so the dispatcher
-//      card can show "N volunteers en route" and a name list.
-//
-// Both endpoints are mounted under requireAuth at the router level.
+// community (civilian responder) endpoints. two things:
+//   1. record an "I'm responding" pledge
+//   2. read pledge state for an incident so the dispatcher card can
+//      show "N volunteers en route" + a name list
 import { Router } from 'express';
 import { query } from '../../db/pool.js';
 import { requireAuth } from '../auth/session.js';
@@ -13,9 +11,8 @@ export const communityRouter = Router();
 communityRouter.use(requireAuth);
 
 // POST /api/community/incidents/:id/pledge
-// Idempotent: a re-click is a no-op (UNIQUE constraint catches it
-// and we just re-fetch the count + names). The dispatcher card needs
-// the live state after this fires, so we emit a socket event.
+// idempotent — re-click is a no-op, UNIQUE constraint catches it.
+// fires a socket event so the dispatcher card stays live.
 communityRouter.post('/incidents/:id/pledge', async (req, res, next) => {
   const incidentId = Number(req.params.id);
   if (!Number.isFinite(incidentId)) {
@@ -23,9 +20,7 @@ communityRouter.post('/incidents/:id/pledge', async (req, res, next) => {
   }
 
   try {
-    // Verify the incident exists and is still open. We don't allow
-    // pledges on resolved incidents — the responder side would just
-    // be noise.
+    // pledge only on still-open incidents. resolved -> 409.
     const inc = await query(
       `SELECT id, tracking_id, status FROM incidents WHERE id = $1`,
       [incidentId],
@@ -35,8 +30,8 @@ communityRouter.post('/incidents/:id/pledge', async (req, res, next) => {
       return res.status(409).json({ error: 'incident_resolved' });
     }
 
-    // Insert. ON CONFLICT DO NOTHING turns a duplicate click into a
-    // success so the UI doesn't have to differentiate.
+    // ON CONFLICT DO NOTHING turns a duplicate click into a 200 so
+    // the UI doesn't have to handle two cases.
     await query(
       `INSERT INTO responder_pledges (incident_id, user_id)
        VALUES ($1, $2)
@@ -58,7 +53,7 @@ communityRouter.post('/incidents/:id/pledge', async (req, res, next) => {
 });
 
 // GET /api/community/incidents/:id/pledges
-// Used by RespondOps to populate the "Volunteers en route" block.
+// used by RespondOps for the "Volunteers en route" block
 communityRouter.get('/incidents/:id/pledges', async (req, res, next) => {
   const incidentId = Number(req.params.id);
   if (!Number.isFinite(incidentId)) {
@@ -72,9 +67,8 @@ communityRouter.get('/incidents/:id/pledges', async (req, res, next) => {
 });
 
 async function readPledgeState(incidentId) {
-  // Aggregate count + a small list of names for the dispatcher card.
-  // We cap the list at 5 because the UI only renders that many and
-  // the full list isn't useful at the demo scale.
+  // count + first 5 names. cap at 5 because that's all the UI
+  // renders, and the rest isn't useful at this scale.
   const { rows } = await query(
     `SELECT u.id, u.name, p.created_at
        FROM responder_pledges p

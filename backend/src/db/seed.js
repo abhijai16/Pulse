@@ -2,8 +2,8 @@ import 'dotenv/config';
 import { pool } from './pool.js';
 import { v4 as uuid } from 'uuid';
 
-// Demo campus is anchored at IIT Bombay-style coordinates (just for the demo).
-// 18 incidents spread across realistic campus locations.
+// demo campus coords. vaguely IIT-Bombay-ish, just so the map looks
+// believable. 14 spots, 18 incidents spread across them.
 const LOCATIONS = [
   { label: 'Main Gate',                    lat: 19.1334, lng: 72.9133 },
   { label: 'Library Block',                lat: 19.1340, lng: 72.9140 },
@@ -72,7 +72,7 @@ async function run() {
     const trackingId = `PULSE-${uuid().slice(0, 8).toUpperCase()}`;
     const place = LOCATIONS[loc % LOCATIONS.length];
     loc++;
-    // tiny jitter so points don't stack perfectly
+    // small jitter so points don't all stack on the same pixel
     const lat = place.lat + (Math.random() - 0.5) * 0.0008;
     const lng = place.lng + (Math.random() - 0.5) * 0.0008;
     const createdAt = new Date(Date.now() - daysAgo * 24 * 3600 * 1000);

@@ -4,11 +4,10 @@ import { query } from '../../db/pool.js';
 
 export const profileRouter = Router();
 
-// GET /api/profile/me — the authenticated user's own profile + recent pledges.
-// `credits` is the +1 counter awarded when an incident they pledged on was
-// resolved by an official responder. `recentIncidents` joins their pledges
-// back to the incident for a short history on the profile page. Visible
-// only to the owner: there is no per-user lookup by id.
+// GET /api/profile/me — own profile + recent pledges.
+// `credits` is the +1 counter for incidents they pledged on that got
+// resolved. `recentIncidents` is a small history for the profile page.
+// visible only to the owner — no per-user lookup by id.
 profileRouter.get('/profile/me', requireAuth, async (req, res, next) => {
   try {
     const userId = req.userId;
@@ -19,9 +18,9 @@ profileRouter.get('/profile/me', requireAuth, async (req, res, next) => {
     );
     if (!u.rows[0]) return res.status(401).json({ error: 'unauthorized' });
 
-    // Recent incidents this user pledged on, newest pledge first.
-    // INNER JOIN so a pledge for a since-deleted incident is silently
-    // dropped rather than producing a row with NULL fields.
+    // recent incidents this user pledged on, newest pledge first.
+    // INNER JOIN drops pledges for since-deleted incidents instead of
+    // returning rows with NULL fields.
     const i = await query(
       `SELECT i.id, i.tracking_id, i.category, i.severity,
               i.status, i.resolved_at, p.created_at AS pledged_at

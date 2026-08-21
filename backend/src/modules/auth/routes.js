@@ -1,7 +1,7 @@
-// Auth router: signup, verify-otp, resend-otp, login, logout, /me.
-// Signup creates the user unverified and issues a one-shot OTP; the
-// user must POST verify-otp to flip email_verified and get a session.
-// Login is rejected with email_not_verified until that flips.
+// auth router: signup, verify-otp, resend-otp, login, logout, /me.
+// signup creates the user unverified + sends an OTP. they have to
+// POST verify-otp to flip email_verified and get a session. login
+// returns 403 email_not_verified until that flip happens.
 import { Router } from 'express';
 import {
   isAllowedEmail,
@@ -27,8 +27,8 @@ function validCode(c) {
   return typeof c === 'string' && /^\d{6}$/.test(c);
 }
 
-// POST /api/auth/signup — validates, creates user (unverified), issues OTP.
-// Does NOT issue a session; the UI must complete verification next.
+// POST /api/auth/signup — validate, create unverified user, issue OTP.
+// does NOT issue a session. the UI has to call verify-otp next.
 authRouter.post('/auth/signup', async (req, res, next) => {
   try {
     const { name, email, password } = req.body || {};
@@ -50,15 +50,14 @@ authRouter.post('/auth/signup', async (req, res, next) => {
 
     await createUser({ name: name.trim(), email, password });
     issueOtp(email);
-    // 200 (not 201) because no resource is fully created yet — the user
-    // row exists but is not "live" until they verify.
+    // 200 not 201 — user row exists but isn't "live" until they verify
     res.status(200).json({ status: 'pending_verification', email: email.toLowerCase() });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/auth/verify-otp — consumes the OTP, flips verified, sets session.
+// POST /api/auth/verify-otp — consume OTP, flip verified, set session
 authRouter.post('/auth/verify-otp', async (req, res, next) => {
   try {
     const { email, code } = req.body || {};
@@ -73,14 +72,14 @@ authRouter.post('/auth/verify-otp', async (req, res, next) => {
       if (result.reason === 'expired' || result.reason === 'no_code') {
         return res.status(400).json({ error: 'code_expired', message: 'Code expired or never sent.' });
       }
-      // mismatch and too_many_attempts both surface as invalid_code — don't
-      // differentiate so we don't leak which one happened.
+      // both mismatch and too_many_attempts return invalid_code on
+      // purpose — don't leak which one happened
       return res.status(400).json({ error: 'invalid_code' });
     }
     const user = await markEmailVerified(email);
     if (!user) {
-      // OTP was valid but the user row is gone — shouldn't happen, but
-      // surface a clean error rather than 500.
+      // OTP was valid but the user row is gone. shouldn't happen but
+      // surface a clean error instead of 500
       return res.status(400).json({ error: 'user_not_found' });
     }
     setSession(res, user.id);
@@ -90,8 +89,8 @@ authRouter.post('/auth/verify-otp', async (req, res, next) => {
   }
 });
 
-// POST /api/auth/resend-otp — re-issues a fresh code. Always 200 so we
-// don't leak whether an email exists in the system.
+// POST /api/auth/resend-otp — fresh code. always 200 so we don't leak
+// whether the email is registered.
 authRouter.post('/auth/resend-otp', async (req, res, next) => {
   try {
     const { email } = req.body || {};
@@ -99,7 +98,7 @@ authRouter.post('/auth/resend-otp', async (req, res, next) => {
       return res.status(400).json({ error: 'invalid_email' });
     }
     if (!isAllowedEmail(email)) {
-      return res.status(200).json({ ok: true }); // pretend it worked
+      return res.status(200).json({ ok: true }); // pretend it worked, don't leak the rule
     }
     const target = await findUnverifiedByEmail(email);
     if (target) resendOtp(email);
@@ -119,8 +118,8 @@ authRouter.post('/auth/login', async (req, res, next) => {
     const result = await authenticate({ email, password });
     if (!result) return res.status(401).json({ error: 'invalid_credentials' });
     if (result.unverified) {
-      // Issue a fresh code so the user can recover without doing a
-      // separate resend click. Logged on the server.
+      // send them a fresh code so they can recover without a separate
+      // resend click. logged on the server.
       issueOtp(email);
       return res.status(403).json({
         error: 'email_not_verified',
@@ -154,10 +153,9 @@ authRouter.get('/auth/me', async (req, res, next) => {
   }
 });
 
-// PUT /api/auth/me/location — record the user's last known position so
-// the 200 m radius query can find them when a nearby incident lands.
-// Throttled to one PUT / 60 s by the caller; the server just stores
-// whatever it's given. Rejected if the user isn't logged in.
+// PUT /api/auth/me/location — record the user's last known position
+// so the 200m radius query can find them. caller throttles to once
+// per 60s; the server just stores what it's given.
 authRouter.put('/auth/me/location', requireAuth, async (req, res, next) => {
   try {
     const { lat, lng } = req.body || {};
@@ -181,5 +179,5 @@ authRouter.put('/auth/me/location', requireAuth, async (req, res, next) => {
   }
 });
 
-// Exposed so server.js can wire the requireAuth middleware to protected modules.
+// re-exported so server.js can use the same requireAuth for other routers
 export { requireAuth };

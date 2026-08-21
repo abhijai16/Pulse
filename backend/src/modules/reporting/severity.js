@@ -1,5 +1,5 @@
-// Auto-classify severity from category + keywords. Pulled into its own file so
-// both reporting (alert creation) and analytics (audit) can use the same rule.
+// auto-classify severity from category + keywords. kept in its own
+// file so reporting (create) and analytics (audit) can share it.
 
 const CATEGORY_BASE = {
   fire:       'high',
@@ -21,7 +21,7 @@ export function classifySeverity(category, description = '') {
   else if (HIGH_KW.some((k) => text.includes(k))) sev = 'high';
   else if (LOW_KW.some((k) => text.includes(k)) && sev !== 'high') sev = 'low';
 
-  // medical is always at least medium
+  // medical never low
   if (category === 'medical' && sev === 'low') sev = 'medium';
 
   return sev;

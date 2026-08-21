@@ -1,25 +1,22 @@
-// Nearby-volunteer notification. On every report:submitted, find
-// verified users within 200 m of the incident and email them. The
-// transport + templates live in modules/auth/mailer.js; this module
-// is just the radius query + dispatch loop.
+// nearby-volunteer notification. on every report:submitted, find
+// verified users within 200m of the incident and email them. transport
+// + templates live in modules/auth/mailer.js; this file is just the
+// radius query + fan-out.
 //
-// We deliberately do the distance calc inline in SQL with the
-// Haversine formula — PostGIS would be cleaner but the dataset is
-// small and we don't want to add a native extension just for this.
+// doing the haversine inline in SQL on purpose. PostGIS would be
+// nicer but we don't want a native extension just for this.
 import { query } from '../../db/pool.js';
 import { sendVolunteerRequest } from '../auth/mailer.js';
 
-// Categories that warrant a civilian ask-for-help blast. Anything
-// else (fire, infra, unsafe_area) is dispatcher-only.
+// only medical + harassment get a civilian ask-for-help blast.
+// fire/infra/unsafe_area is dispatcher-only.
 const NOTIFY_CATEGORIES = new Set(['medical', 'harassment']);
 const RADIUS_METERS = 200;
-const MAX_RECIPIENTS = 25; // belt-and-braces cap for the demo
+const MAX_RECIPIENTS = 25; // safety cap for the demo
 
-// Returns true if the user is "fresh enough" to notify. We allow
-// stale points (no time filter) because the alternative is missing
-// the campus security guard who only opens the app once a week — but
-// we still cap the radius at 200 m so a stale point far away can't
-// trigger a blast.
+// we're permissive on staleness — better to email the campus guard
+// who only opens the app once a week than to miss them. the 200m
+// radius is what keeps a stale point from triggering a far-away blast.
 function isNotifiable(u) {
   return Number.isFinite(u.lat) && Number.isFinite(u.lng);
 }
@@ -28,9 +25,7 @@ export async function notifyNearbyVolunteers(incident) {
   if (!incident || !NOTIFY_CATEGORIES.has(incident.category)) return;
   if (!Number.isFinite(incident.lat) || !Number.isFinite(incident.lng)) return;
 
-  // Haversine in meters. 6371000 = Earth radius in m.
-  // The (u.last_known_lat - $lat) factors cancel out at the boundary
-  // so we use 0 as a tie-break by sorting on distance, then id.
+  // haversine, meters. 6371000 = earth radius in m.
   const { rows } = await query(
     `SELECT u.id, u.name, u.email, u.last_known_lat  AS lat, u.last_known_lng AS lng,
             (
@@ -63,9 +58,8 @@ export async function notifyNearbyVolunteers(incident) {
     `notifying ${nearby.length} verified user(s) within ${RADIUS_METERS}m`,
   );
 
-  // Fire-and-forget. We intentionally don't await: a single slow
-  // SMTP connection must not back up the report flow. Each sendMail
-  // already swallows + logs its own errors.
+  // fire-and-forget. one slow SMTP must not block the report flow.
+  // sendMail already swallows its own errors.
   for (const u of nearby) {
     sendVolunteerRequest({ to: u.email, name: u.name, incident }).catch((err) => {
       console.error(`[community] sendVolunteerRequest threw for ${u.email}:`, err);

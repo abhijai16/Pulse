@@ -1,6 +1,6 @@
-// scrypt-based password hashing. Node's built-in crypto module gives us
-// a constant-time compare and a tunable cost without pulling in bcrypt.
-// Hash format: "<salt-hex>:<derived-hex>" — both 64 hex chars (32 bytes).
+// scrypt-based hashing. node's built-in crypto gives us a
+// constant-time compare and a tunable cost without pulling in bcrypt.
+// format: "<salt-hex>:<derived-hex>" — both 64 hex chars (32 bytes).
 import crypto from 'node:crypto';
 
 const KEYLEN = 32;
@@ -19,7 +19,7 @@ export function verifyPassword(plain, stored) {
   const salt = Buffer.from(saltHex, 'hex');
   const expected = Buffer.from(derivedHex, 'hex');
   const actual = crypto.scryptSync(plain, salt, expected.length, COST);
-  // timingSafeEqual requires equal-length buffers
+  // timingSafeEqual needs equal-length buffers
   if (actual.length !== expected.length) return false;
   return crypto.timingSafeEqual(actual, expected);
 }

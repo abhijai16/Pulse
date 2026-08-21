@@ -1,12 +1,12 @@
-// Auth data layer. Validates the college email domain at the boundary
-// (env: ALLOWED_EMAIL_DOMAIN) so the policy lives in one place.
+// auth data layer. college email domain is checked at the boundary
+// (env: ALLOWED_EMAIL_DOMAIN) so the policy lives in one spot.
 import { query } from '../../db/pool.js';
 import { hashPassword, verifyPassword } from './password.js';
 
 const ALLOWED_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || '').toLowerCase().trim();
 
 export function isAllowedEmail(email) {
-  if (!ALLOWED_DOMAIN) return false; // fail closed if misconfigured
+  if (!ALLOWED_DOMAIN) return false; // fail closed if env is missing
   return email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`);
 }
 
@@ -29,14 +29,14 @@ export async function findUserByEmail(email) {
   return rows[0] || null;
 }
 
-// Returns a sentinel object so the route can distinguish "wrong password"
-// from "account not yet verified" without service.js knowing HTTP shapes.
+// returns a sentinel object so the route can tell "wrong password"
+// apart from "not verified" without service.js knowing HTTP shapes.
 //
-// For unverified accounts we surface { unverified: true } BEFORE checking
-// the password — the OTP gate is what proves email control, so there's no
-// security cost in telling the user "you need to verify first" regardless
-// of what password they typed. The trade-off (an attacker can probe which
-// emails are registered) is acceptable for a campus deployment.
+// for unverified accounts we return { unverified: true } BEFORE
+// checking the password. the OTP is what proves email control, so
+// saying "you need to verify first" doesn't reveal anything. the
+// trade-off (an attacker can probe which emails are registered) is
+// fine for a campus deployment.
 export async function authenticate({ email, password }) {
   const user = await findUserByEmail(email);
   if (!user) return null;
@@ -61,6 +61,6 @@ export async function findUnverifiedByEmail(email) {
     [email.toLowerCase()],
   );
   if (!rows[0]) return null;
-  if (rows[0].email_verified) return null; // already verified — no resend needed
+  if (rows[0].email_verified) return null; // already verified, no resend needed
   return rows[0];
 }

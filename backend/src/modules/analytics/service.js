@@ -2,7 +2,7 @@ import { query } from '../../db/pool.js';
 import { emitAnalyticsEvent } from '../../events.js';
 
 export async function getHeatmap() {
-  // every point in the last 30 days — frontend will cluster
+  // every point in the last 30 days, frontend clusters
   const { rows } = await query(
     `SELECT id, tracking_id, category, severity, lat, lng, location_label, status, created_at
        FROM incidents
@@ -13,7 +13,7 @@ export async function getHeatmap() {
 }
 
 export async function getMetrics() {
-  // avg response time = avg(resolved_at - created_at) for resolved incidents
+  // response time = avg(resolved_at - created_at) on resolved only
   const r1 = await query(
     `SELECT
        COUNT(*)::int AS total_incidents,
@@ -34,10 +34,9 @@ export async function getMetrics() {
        GROUP BY severity
        ORDER BY n DESC`
   );
-  // FEATURE: Peer-Response Credits — aggregate community engagement on
-  // PulseBoard. Counts pledge-rows (not distinct users) so multiple
-  // pledges across multiple incidents stack, matching the spec wording
-  // "count of total peer-response actions".
+  // peer-response credits: total pledges this month for the PulseBoard
+  // engagement tile. counts rows (not distinct users) so a user who
+  // pledges on 3 incidents shows up 3 times.
   const r4 = await query(
     `SELECT COUNT(*)::int AS peer_assists_this_month
        FROM responder_pledges
@@ -52,7 +51,9 @@ export async function getMetrics() {
 }
 
 export async function getRepeatedIncidents() {
-  // naive cluster: round coords to ~3 decimal places (~100m), group by category + location
+  // rough cluster: round coords to 3 decimals (~100m) and group by
+  // category + rounded location. good enough for "is this spot a
+  // repeat offender?" without dragging PostGIS in.
   const { rows } = await query(
     `SELECT
         ROUND(lat::numeric, 3) AS lat_r,
@@ -76,8 +77,8 @@ export async function createBroadcast({ lat, lng, radiusM, message, severity, du
     err.status = 400;
     throw err;
   }
-  // FEATURE 2: geofence — every broadcast is now also an active geofence
-  // for `durationMinutes` (default 30). NULL = evergreen until manually cleared.
+  // geofence: every broadcast is also an active zone for
+  // `durationMinutes` (default 30). null = never expires.
   const activeUntil = durationMinutes > 0
     ? new Date(Date.now() + durationMinutes * 60_000).toISOString()
     : null;
@@ -101,17 +102,17 @@ export async function listBroadcasts() {
   return rows;
 }
 
-// ====== FEATURE 2: Geofence — find active zones containing a point ======
-// Uses the haversine formula to test containment. We only return zones that
-// are not yet expired (active_until IS NULL OR active_until > NOW()).
+// geofence — find active zones that contain a given point.
+// haversine test in JS. only returns zones that aren't expired
+// (active_until null OR > now()).
 export async function findActiveGeofencesForPoint(lat, lng) {
   if (lat == null || lng == null) {
     const err = new Error('lat, lng required');
     err.status = 400;
     throw err;
   }
-  // Pull every candidate zone (still small for a campus-scale app) and filter
-  // in JS. For city-scale we'd use PostGIS ST_DWithin.
+  // pull all candidate zones (cheap for campus scale) and filter in JS.
+  // for a city we'd switch to PostGIS ST_DWithin.
   const { rows } = await query(
     `SELECT id, lat, lng, radius_m, message, severity, created_at, active_until
        FROM broadcasts

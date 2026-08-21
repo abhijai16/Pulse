@@ -36,12 +36,9 @@ export async function listResponders() {
   return rows;
 }
 
-// FEATURE: Nearest Responders — for the AlertNow "NEAREST RESPONDERS"
-// panel. Computes great-circle distance via the haversine formula in SQL
-// (units: meters) and returns the N closest AVAILABLE responders sorted
-// ascending. Responders without a position (lat/lng NULL) get NULL
-// distance and are pushed to the end so the panel still shows them with
-// no km label rather than hiding them entirely.
+// haversine in SQL, returns the N closest AVAILABLE responders in
+// meters. responders without a position get NULL distance and get
+// pushed to the end so they still show up, just with no km label.
 export async function listNearbyResponders({ lat, lng, limit = 3 }) {
   if (lat == null || lng == null) {
     const err = new Error('lat and lng required');
@@ -92,7 +89,7 @@ export async function assignResponder({ incidentId, responderId, note = null }) 
     `INSERT INTO dispatches (incident_id, responder_id, note) VALUES ($1,$2,$3)`,
     [incidentId, responderId, note]
   );
-  // Move incident to 'dispatched' and mark responder as busy
+  // bump incident to 'dispatched', mark the responder busy
   const upd = await query(
     `UPDATE incidents
         SET status = 'dispatched', assigned_to = $1, updated_at = NOW()
@@ -110,10 +107,9 @@ export async function updateIncidentStatus(id, status) {
     err.status = 400;
     throw err;
   }
-  // Read previous status so we can guard the credits award against
-  // re-resolves (resolved → resolved is a no-op for credits) and against
-  // resolved → on_scene → resolved cycles (only the fresh-resolve step
-  // awards).
+  // need the old status so the credits step below only awards on a
+  // real "non-resolved -> resolved" transition. re-resolving and
+  // resolved -> on_scene -> resolved both shouldn't double-pay.
   const before = await query(
     `SELECT status, assigned_to FROM incidents WHERE id = $1`,
     [id]
@@ -134,13 +130,13 @@ export async function updateIncidentStatus(id, status) {
       RETURNING id, tracking_id, status, assigned_to, updated_at, resolved_at`,
     [status, id]
   );
-  // free the responder when resolved
+  // free up the responder if we just resolved
   if (status === 'resolved' && rows[0].assigned_to) {
     await query(`UPDATE responders SET status = 'available' WHERE id = $1`, [rows[0].assigned_to]);
   }
-  // FEATURE: Peer-Response Credits — +1 to every peer pledger for this
-  // incident, but only on the non-resolved → resolved transition. One
-  // UPDATE, no loop. Idempotent thanks to the transition guard above.
+  // peer-response credits: +1 to every pledger for this incident on a
+  // real resolve transition. one UPDATE, no loop. the guard above keeps
+  // it idempotent.
   if (isFreshResolve) {
     await query(
       `UPDATE users
@@ -149,7 +145,7 @@ export async function updateIncidentStatus(id, status) {
       [id]
     );
   }
-  // fetch tracking_id for the socket fan-out
+  // need tracking_id for the socket event
   const tr = await query(`SELECT tracking_id FROM incidents WHERE id = $1`, [id]);
   emitDispatchEvent('incident:status_changed', {
     tracking_id: tr.rows[0]?.tracking_id,
@@ -182,7 +178,7 @@ export async function overrideSeverity(id, severity) {
     err.status = 404;
     throw err;
   }
-  // Notify every connected console of the override so the UI updates live
+  // tell every connected console about the override
   const tr = await query(`SELECT tracking_id FROM incidents WHERE id = $1`, [id]);
   emitDispatchEvent('incident:severity_changed', {
     id: rows[0].id,
