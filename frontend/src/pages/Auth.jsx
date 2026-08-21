@@ -123,8 +123,8 @@ export default function Auth() {
     <div className="auth-page">
       <div className="auth-card">
         <Link to="/" className="auth-brand">
-          <span className="auth-brand-mark">⚡</span>
-          <span className="auth-brand-name">Pulse</span>
+          <img src="/logo.png" alt="Pulse" className="auth-brand-mark" />
+          <img src="/wordmark.png" alt="Pulse" className="auth-brand-wordmark" />
         </Link>
 
         {mode !== 'verifying' && (

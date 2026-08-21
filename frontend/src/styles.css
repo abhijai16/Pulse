@@ -131,10 +131,27 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   border-bottom: 1px solid var(--border);
 }
 .topbar .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 700;
   font-size: 18px;
   letter-spacing: -0.2px;
   color: #ffffff;
+}
+.topbar .brand-mark {
+  height: 30px;
+  width: auto;
+  display: block;
+  /* No background, no chip — the icon floats directly on the navbar. */
+}
+.topbar .brand-wordmark {
+  height: 26px;
+  width: auto;
+  display: block;
+  /* The wordmark PNG has its own white "Pulse" text and red "l" pulse
+     line baked in — height matches the icon mark, width auto so the
+     3:1 aspect ratio of the source PNG keeps its proportions. */
 }
 .topbar nav { display: flex; gap: 6px; }
 .topbar nav a {
@@ -301,12 +318,17 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   letter-spacing: -0.2px;
 }
 .lnav-brand:hover { color: var(--text); }
-.lnav-brand-mark { font-size: 22px; line-height: 1; }
-.lnav-brand-name {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: #ffffff;
+.lnav-brand-mark {
+  height: 30px;
+  width: auto;
+  line-height: 1;
+  display: block;
+}
+.lnav-brand-wordmark {
+  height: 28px;
+  width: auto;
+  line-height: 1;
+  display: block;
 }
 .lnav-links {
   display: flex;
@@ -1101,8 +1123,18 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   margin-bottom: 18px;
   text-decoration: none;
 }
-.auth-brand-mark { font-size: 20px; line-height: 1; }
-.auth-brand-name { letter-spacing: -0.2px; }
+.auth-brand-mark {
+  height: 28px;
+  width: auto;
+  line-height: 1;
+  display: block;
+}
+.auth-brand-wordmark {
+  height: 26px;
+  width: auto;
+  line-height: 1;
+  display: block;
+}
 
 .auth-tabs {
   display: flex;

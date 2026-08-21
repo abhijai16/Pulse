@@ -131,8 +131,8 @@ export default function Landing() {
       <header className="lnav">
         <div className="lnav-inner">
           <Link to="/" className="lnav-brand">
-            <span className="lnav-brand-mark">⚡</span>
-            <span className="lnav-brand-name">Pulse</span>
+            <img src="/logo.png" alt="Pulse" className="lnav-brand-mark" />
+            <img src="/wordmark.png" alt="Pulse" className="lnav-brand-wordmark" />
           </Link>
           <nav className="lnav-links">
             <a href="#modules">Modules</a>

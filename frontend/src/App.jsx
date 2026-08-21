@@ -51,7 +51,13 @@ function Shell({ children }) {
   return (
     <>
       <header className="topbar">
-        <Link to="/" className="brand">⚡ Pulse</Link>
+        <Link to="/" className="brand">
+          {/* Compact icon-only logo mark (the pin + heartbeat from logo.png),
+              sized to sit flush with the wordmark image without pushing the
+              navbar taller. */}
+          <img src="/logo.png" alt="Pulse" className="brand-mark" />
+          <img src="/wordmark.png" alt="Pulse" className="brand-wordmark" />
+        </Link>
         <nav>
           <NavLink to="/report" className={({ isActive }) => isActive ? 'active' : ''}>Report</NavLink>
           <NavLink to="/ops" className={({ isActive }) => isActive ? 'active' : ''}>Dispatch</NavLink>
