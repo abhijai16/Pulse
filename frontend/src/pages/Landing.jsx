@@ -18,7 +18,6 @@ const MODULES = [
     icon: '📱',
     name: 'AlertNow',
     tagline: 'Citizen Reporting',
-    sellable: 'Sellable as: Anonymous Hazard Reporting Tool',
     desc: 'One-tap incident submission with auto-captured GPS, photo upload, and end-to-end encryption when filed anonymously. Citizens get a tracking ID and live status updates.',
   },
   {
@@ -27,7 +26,6 @@ const MODULES = [
     icon: '🚨',
     name: 'RespondOps',
     tagline: 'Responder Dispatch',
-    sellable: 'Sellable as: Live Dispatch Console for Security Firms',
     desc: 'Severity-colored live map, drag-and-drop responder assignment, real-time status sync back to the reporter via Socket.io. Replaces radio + spreadsheet workflows.',
   },
   {
@@ -36,7 +34,6 @@ const MODULES = [
     icon: '📊',
     name: 'PulseBoard',
     tagline: 'Analytics & Broadcast',
-    sellable: 'Sellable as: Campus Safety Analytics & Mass-Alert SaaS',
     desc: 'Incident heatmap, repeated-incident clustering, response-time KPIs, radius-push geofenced alerts, and CSV/PDF exports for campus safety officers.',
   },
 ];
@@ -189,7 +186,10 @@ export default function Landing() {
 
       <section className="llive" id="live">
         <div className="llive-inner">
-          <div className="section-label">Live now</div>
+          <div className="live-pill live-pill-on llive-badge">
+            <span className="live-pill-dot" />
+            <span>LIVE</span>
+          </div>
           <h2 className="section-h2">A real map, showing real incidents, in real time.</h2>
           <p className="llive-sub">
             Real campus reports from the last 30 days — plotted on a live
@@ -219,12 +219,12 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ============ 4. THREE PRODUCTS ICON-TRIPLET ROW ============ */}
+      {/* ============ 4. THREE CORE SYSTEMS ROW ============ */}
       <section className="lmodules" id="modules">
         <div className="lmodules-inner">
-          <div className="section-label">Three products. One platform.</div>
+          <div className="section-label">How it works</div>
           <h2 className="section-h2">
-            Each module ships independently — <span className="dim">buy one, deploy it tomorrow.</span>
+            Three connected systems, working as one.
           </h2>
           <div className="lmodules-grid">
             {MODULES.map((m) => (
@@ -233,7 +233,6 @@ export default function Landing() {
                 <div className="lmodule-tagline">{m.tagline}</div>
                 <h3 className="lmodule-name">{m.name}</h3>
                 <p className="lmodule-desc">{m.desc}</p>
-                <div className="lmodule-sellable">{m.sellable}</div>
                 <div className="lmodule-arrow">Open {m.name} →</div>
               </Link>
             ))}
