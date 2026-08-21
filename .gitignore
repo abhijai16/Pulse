@@ -1,0 +1,50 @@
+# =========================================================
+# Project-root .gitignore — covers the frontend (Vite/React)
+# plus anything in the repo not handled by backend/.gitignore
+# =========================================================
+
+# ---------- Frontend (Vite / React) ----------
+# Local env files hold VITE_* secrets like the Mapbox token
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# Vite / dependency caches
+frontend/node_modules/
+frontend/.vite/
+frontend/.cache/
+
+# ---------- Backend fallback ----------
+# backend/.gitignore is the source of truth, but keep these
+# here too in case a future tool ignores nested gitignores
+# (e.g. flat zip exports of the repo).
+backend/node_modules/
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ---------- Editor / OS ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- Secrets — belt and suspenders ----------
+# Catches key material regardless of where it ends up
+*.pem
+*.key
+*.p12
+secrets/

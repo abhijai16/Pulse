@@ -1,0 +1,3 @@
+# Placeholder so the uploads/ directory is tracked in git.
+# Files in this folder (evidence photos, PDFs) are ignored
+# via backend/.gitignore and never pushed to GitHub.
