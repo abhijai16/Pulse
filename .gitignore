@@ -48,3 +48,5 @@ logs/
 *.key
 *.p12
 secrets/
+backend/.env
+frontend/.env
