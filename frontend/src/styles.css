@@ -10,7 +10,9 @@
   --surface-2: #222226;
   --border: #2a2a2e;
   --text: #ededee;
-  --muted: #9a9a9a;
+  /* Citizen-style muted mid-grey — true neutral, no blue channel. Sits in
+     the ~#8e8e8e band so the navbar reads as "MODULES / LIVE / ACTIVITY". */
+  --muted: #8e8e8e;
 
   /* Primary accent — light/electric blue (trust + calm) */
   --accent: #5eb1ff;
@@ -272,7 +274,8 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(11, 18, 32, 0.85);
+  /* Neutral grey-black navbar — matches Citizen's flat tone. No blue channel. */
+  background: rgba(22, 22, 22, 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -349,24 +352,102 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   background: var(--bg);
   overflow: hidden;
 }
+/* Hero's local backdrop container. Stacks INSIDE the hero's own
+   isolation context, so z-index values here are local to .lhero.
+   Within .lhero:
+     .lhero-inner  (hero text)       z: 3
+     .lhero-orb    (gradient orbs)   z: 2
+     .lhero-bg     (local map svg)   z: 1
+   The site-wide .bg-pattern is OUTSIDE .lhero's stacking context
+   (it's at the document root), so it always sits below the hero. */
 .lhero-bg {
-  position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none;
 }
-/* Faint OSM map pattern — sits behind the orbs as the "real places" texture.
-   Grayscaled + low opacity so the street grid reads as background, not as
-   a real map. pointer-events:none so it never intercepts clicks. */
+.lhero-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 3;
+}
+
+/* ====== Site-wide background pattern =====================================
+   A dedicated, fixed-position layer rendered ONCE at the App root (see
+   components/BackgroundPattern.jsx) so it underlays every route
+   (Landing, AlertNow, RespondOps, PulseBoard) — never gets lost in a
+   per-page redesign.
+
+   The layer is a single static PNG of Bhubaneswar's street network
+   (pre-rendered from OSM mapnik tiles at zoom 13). It's set via
+   background-image on a single div, so:
+   - no live tile requests on first paint
+   - no JS / Leaflet / map-library dependency for the backdrop
+   - the texture file lives at /assets/bhubaneswar-streets.png and ships
+     with the build, so it works offline / behind firewalls
+
+   Layering rules:
+   - position: fixed + z-index: 0 sits it at the very bottom of the visual
+     stack. Page content stacks above at z-index >= 1.
+   - pointer-events: none so it never intercepts clicks on buttons, the
+     Leaflet maps in RespondOps/PulseBoard, etc.
+   - 10% opacity keeps it visible-but-faint; the radial mask softens the
+     edges so it fades into the bg color instead of forming a hard
+     rectangle. Grayscale + brightness filters keep the streets neutral
+     so they don't add color noise to the page. */
+.bg-pattern {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* background-image is set inline on the element (see
+     BackgroundPattern.jsx) so swapping the asset doesn't require a CSS
+     edit — useful if the map ever needs to be re-rendered. */
+  background-repeat: no-repeat;
+  background-position: center 38%;
+  background-size: 1200px auto;
+  opacity: 0.10;
+  filter: grayscale(1) brightness(1.4) contrast(1.05);
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 40%, #000 40%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 40%, #000 40%, transparent 90%);
+}
+/* Larger viewports get a wider tile so the pattern fills the hero cleanly
+   without repeating on common laptop widths (1280-1920). */
+@media (min-width: 1600px) {
+  .bg-pattern { background-size: 1600px auto; }
+}
+/* Tighter mobile layout — slightly bigger proportion so the street
+   texture is still visible on phone screens. */
+@media (max-width: 720px) {
+  .bg-pattern { background-size: 180% auto; background-position: center 30%; }
+}
+
+/* Make sure every page's content sits ABOVE the fixed pattern layer.
+   Without this, fixed-positioned elements like the broadcast banner or
+   modal overlays could render under the pattern (it looks weird). */
+.landing,
+.page,
+.broadcast-banner {
+  position: relative;
+  z-index: 1;
+}
+/* ===================================================================== */
+/* Faint stylized "map texture" — sits behind the orbs as the "real places"
+   backdrop. Now an inline SVG street grid (see HeroMapBackground.jsx) so
+   the hero loads with zero Leaflet/tile-server overhead. Grayscaled + low
+   opacity so the grid reads as background, not as a real map.
+   pointer-events:none so it never intercepts clicks. */
 .hero-map-bg {
   position: absolute;
   inset: -40px;
-  opacity: 0.10;
+  opacity: 0.18;
   filter: grayscale(1) brightness(0.9) contrast(1.1);
   pointer-events: none;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, #000 35%, transparent 85%);
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, #000 35%, transparent 85%);
 }
-.hero-map-bg .leaflet-container {
-  background: #0a0a0a;
-  pointer-events: none;
+.hero-map-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .lhero-orb {
   position: absolute;
@@ -374,7 +455,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   filter: blur(110px);
   opacity: 0.20;
   animation: orb-float 14s ease-in-out infinite;
-  z-index: 1;
+  z-index: 2;
 }
 .lhero-orb-a { width: 480px; height: 480px; background: #5eb1ff; top: -160px; left: -120px; }
 .lhero-orb-b { width: 380px; height: 380px; background: #ff4d4d; top: 80px; right: -100px; animation-delay: -5s; }
@@ -533,8 +614,8 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   border-radius: 20px;
   padding: 14px;
   box-shadow:
-    0 30px 60px rgba(11,18,32,0.18),
-    0 10px 20px rgba(11,18,32,0.08);
+    0 30px 60px rgba(22,22,22,0.18),
+    0 10px 20px rgba(22,22,22,0.08);
   overflow: hidden;
   height: 460px;
   min-height: 460px;
@@ -555,7 +636,8 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   position: absolute;
   top: 26px;
   right: 26px;
-  background: rgba(11,18,32,0.85);
+  /* Neutral grey-black — matches navbar tone, no blue tint. */
+  background: rgba(22,22,22,0.85);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
@@ -752,7 +834,7 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
 }
 .lactivity-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(11,18,32,0.08);
+  box-shadow: 0 12px 24px rgba(22,22,22,0.08);
 }
 .lactivity-cat-dot {
   width: 36px; height: 36px;

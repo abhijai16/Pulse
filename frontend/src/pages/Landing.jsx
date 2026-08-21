@@ -1,12 +1,15 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import LiveMapShowcase from '../components/LiveMapShowcase.jsx';
+import HeroMapBackground from '../components/HeroMapBackground.jsx';
 
-// Live map is dynamically imported so the Leaflet bundle (~150KB JS) doesn't
-// block the hero first paint. It still resolves fast enough that the showcase
-// card feels alive within a couple of seconds.
-const LiveMapShowcase = lazy(() => import('../components/LiveMapShowcase.jsx'));
-const HeroMapBackground = lazy(() => import('../components/HeroMapBackground.jsx'));
+// Both homepage map components used to be lazy-loaded so the Leaflet bundle
+// (~150KB JS) didn't block first paint. After the SVG rewrite they have no
+// map-library dep at all, so direct imports keep the page simpler — no
+// Suspense fallbacks, no flash of "Loading live map…".
+// Live, interactive Leaflet maps still load on RespondOps and PulseBoard
+// (see those route modules), where they're functionally necessary.
 
 const MODULES = [
   {
@@ -144,9 +147,7 @@ export default function Landing() {
       {/* ============ 1. HERO ============ */}
       <section className="lhero">
         <div className="lhero-bg" aria-hidden="true">
-          <Suspense fallback={null}>
-            <HeroMapBackground />
-          </Suspense>
+          <HeroMapBackground />
           <div className="lhero-orb lhero-orb-a" />
           <div className="lhero-orb lhero-orb-b" />
         </div>
@@ -188,17 +189,15 @@ export default function Landing() {
 
       <section className="llive" id="live">
         <div className="llive-inner">
-          <div className="section-label">Live now · Bhubaneswar</div>
+          <div className="section-label">Live now</div>
           <h2 className="section-h2">A real map, showing real incidents, in real time.</h2>
           <p className="llive-sub">
-            Below is the actual dispatch console's map — seeded with real
-            campus reports and updated over Socket.io the moment a new one
-            arrives. No mockup. No stock photo.
+            Real campus reports from the last 30 days — plotted on a live
+            map centered on your current location, updated over Socket.io
+            the moment a new one arrives. No mockup. No stock photo.
           </p>
           <div className="llive-card">
-            <Suspense fallback={<div className="llive-loading">Loading live map…</div>}>
-              <LiveMapShowcase />
-            </Suspense>
+            <LiveMapShowcase />
           </div>
         </div>
       </section>

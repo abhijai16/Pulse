@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { api } from '../../lib/api.js';
 import { socket } from '../../lib/socket.js';
 import { useGeolocation } from '../../lib/useGeolocation.js';
-import { makeCategoryIcon, makeSelfIcon, categoryColor } from '../../lib/mapIcons.js';
+import { makeCategoryIcon, makeSelfIcon } from '../../lib/mapIcons.js';
 import MapLegend from '../../components/MapLegend.jsx';
 
 const PIE_COLORS = ['#ff4d4d', '#ff7a45', '#f5a623', '#2ecc71'];
@@ -106,7 +106,7 @@ export default function PulseBoard() {
               <div
                 style={{
                   position: 'absolute', inset: 0, zIndex: 1000,
-                  background: 'rgba(11,18,32,0.7)',
+                  background: 'rgba(22,22,22,0.7)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: 'var(--text)', fontSize: 14,
                   backdropFilter: 'blur(2px)',
@@ -151,8 +151,8 @@ export default function PulseBoard() {
               <XAxis dataKey="category" stroke="#8a99b4" />
               <YAxis stroke="#8a99b4" allowDecimals={false} />
               <Tooltip
-                contentStyle={{ background: '#111118', border: '1px solid #23232e' }}
-                labelStyle={{ color: '#e6edf7' }}
+                contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2e' }}
+                labelStyle={{ color: '#ededee' }}
               />
               <Bar dataKey="n" fill="#5eb1ff" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -162,7 +162,7 @@ export default function PulseBoard() {
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={metrics.by_severity} dataKey="n" nameKey="severity" outerRadius={60} label>
-                {metrics.by_severity.map((entry, idx) => (
+                {metrics.by_severity.map((_entry, idx) => (
                   <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
                 ))}
               </Pie>

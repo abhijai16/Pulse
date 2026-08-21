@@ -9,9 +9,10 @@ import { useState, useEffect, useRef } from 'react';
 //   - Spinner shown immediately on keystroke (not waiting for debounce fire)
 //   - limit=5, NO addressdetails=1 (we split display_name ourselves; saves
 //     a significant chunk of server-side work for Nominatim)
-//   - Biased to Bhubaneswar via viewbox + bounded=1
+//   - countrycodes=in keeps results anchored to India — every campus we
+//     support is here, and it cuts out irrelevant global matches.
 
-const BHUBANESWAR_VIEWBOX = '85.75,20.30,85.90,20.45'; // [W,N,E,S]
+const COUNTRY_CODES = 'in';
 const DEBOUNCE_MS = 220;
 const MIN_CHARS = 3;
 
@@ -83,7 +84,7 @@ export default function LocationSearch({ coords, onSelect, onUseGps }) {
     const url =
       `https://nominatim.openstreetmap.org/search?format=json&limit=5` +
       `&q=${encodeURIComponent(q)}` +
-      `&viewbox=${BHUBANESWAR_VIEWBOX}&bounded=1`;
+      `&countrycodes=${COUNTRY_CODES}`;
     try {
       const res = await fetch(url, { signal: ac.signal });
       if (!res.ok) throw new Error(`Nominatim ${res.status}`);
