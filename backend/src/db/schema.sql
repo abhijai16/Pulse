@@ -92,3 +92,23 @@ ALTER TABLE broadcasts
 CREATE INDEX IF NOT EXISTS idx_broadcasts_active
   ON broadcasts(active_until)
   WHERE active_until IS NOT NULL;
+
+-- ============ AUTH: simple email + password ============
+-- Restricted to a single college email domain (env: ALLOWED_EMAIL_DOMAIN).
+-- password_hash stores scrypt(N=2^14, r=8, p=1) in the format
+-- "<salt-hex>:<derived-hex>" so we don't pull in a native bcrypt dep.
+CREATE TABLE IF NOT EXISTS users (
+  id            SERIAL PRIMARY KEY,
+  name          TEXT NOT NULL,
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Email verification flag. New rows default to false; existing rows
+-- (created before OTP was introduced) also stay false so they can't
+-- log in until they re-verify — safe default.
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

@@ -339,8 +339,54 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
 }
 .lnav-cta:hover { background: var(--accent-hover); color: #06080c; transform: translateY(-1px); }
 
+/* Auth controls in the landing nav. `lnav-right` is the slot that holds
+   the Log in / Sign up pair (logged out) or the user chip + Log out
+   (logged in). `lnav-btn-ghost` is a quieter variant of the existing CTA. */
+.lnav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lnav-user {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lnav-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.lnav-btn-ghost {
+  background: transparent;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  font-weight: 500;
+  border: 0;
+  padding: 10px 12px;
+}
+.lnav-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
 @media (max-width: 720px) {
   .lnav-links { display: none; }
+  .lnav-user { display: none; }
 }
 
 /* ----- HERO ----- */
@@ -969,4 +1015,241 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   margin: 0 0 32px;
   letter-spacing: -0.2px;
   line-height: 1.2;
+}
+
+/* ============ Topbar — auth controls ============
+   Slots in on the right side of the existing topbar. Two visual variants:
+   the user chip + ghost "Log out" once signed in, and a primary "Log in"
+   link when not. */
+.topbar-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 12px;
+}
+.topbar-user {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.topbar-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1220;
+}
+.topbar-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #0b1220;
+}
+.topbar-btn-ghost {
+  background: transparent;
+  color: var(--muted);
+}
+.topbar-btn-ghost:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ============ Auth page (/login) ============
+   Centered card on a dark backdrop with the brand mark on top, two tabs
+   (Log in / Sign up), a stacked form, and a footnote about anonymous
+   reporting still being open. */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: var(--surface);
+}
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+}
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+  margin-bottom: 18px;
+  text-decoration: none;
+}
+.auth-brand-mark { font-size: 20px; line-height: 1; }
+.auth-brand-name { letter-spacing: -0.2px; }
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 18px;
+}
+.auth-tab {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.auth-tab.active {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.auth-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 4px 0 4px;
+  letter-spacing: -0.2px;
+  color: var(--text);
+}
+.auth-sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.auth-field {
+  display: block;
+}
+.auth-field > span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.auth-field input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+.auth-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.auth-error {
+  background: var(--red-soft);
+  color: var(--red-accent);
+  border: 1px solid rgba(255, 77, 77, 0.3);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.auth-submit {
+  margin-top: 6px;
+  padding: 12px 14px;
+  background: var(--accent);
+  color: #0b1220;
+  border: 0;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: background 0.15s;
+}
+.auth-submit:hover { background: var(--accent-hover); }
+.auth-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.auth-foot {
+  text-align: center;
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.auth-link {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  font: inherit;
+}
+.auth-link:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* OTP code input — large, centred digits so the code reads as a single
+   6-digit chunk instead of six separate fields. letter-spacing adds
+   breathing room without forcing an exotic font. */
+.auth-otp-input {
+  font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.4em !important;
+  text-align: center !important;
+  padding-left: calc(12px + 0.4em) !important; /* keep caret roughly centred with letter-spacing */
+  text-indent: 0.4em !important;
+}
+
+/* Soft inline status note (e.g. "code resent") — lighter than auth-error. */
+.auth-note-inline {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border: 1px solid rgba(94, 177, 255, 0.25);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.auth-note {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
 }

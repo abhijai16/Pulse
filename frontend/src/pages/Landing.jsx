@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { useAuth } from '../lib/useAuth.jsx';
 import LiveMapShowcase from '../components/LiveMapShowcase.jsx';
 import HeroMapBackground from '../components/HeroMapBackground.jsx';
 
@@ -85,6 +86,8 @@ function formatResponseTime(min) {
 }
 
 export default function Landing() {
+  const { user, ready, logout } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total: null, active: null, avgMin: null, responders: null,
   });
@@ -137,7 +140,28 @@ export default function Landing() {
             <a href="#activity">Activity</a>
             <a href="#stats">Numbers</a>
           </nav>
-          <Link to="/ops" className="lnav-cta">View Live Demo →</Link>
+          <div className="lnav-right">
+            {ready && user ? (
+              <>
+                <span className="lnav-user" title={user.email}>{user.name}</span>
+                <button
+                  type="button"
+                  className="lnav-btn lnav-btn-ghost"
+                  onClick={async () => {
+                    await logout();
+                    navigate('/');
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : ready ? (
+              <>
+                <Link to="/login" className="lnav-btn lnav-btn-ghost">Log in</Link>
+                <Link to="/login" className="lnav-cta">Sign up →</Link>
+              </>
+            ) : null}
+          </div>
         </div>
       </header>
 

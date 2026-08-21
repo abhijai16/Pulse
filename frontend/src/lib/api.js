@@ -3,6 +3,7 @@ const BASE = import.meta.env.VITE_API_BASE || '';
 
 async function request(path, opts = {}) {
   const res = await fetch(`${BASE}/api${path}`, {
+    credentials: 'include',
     headers: opts.body instanceof FormData ? {} : { 'Content-Type': 'application/json' },
     ...opts,
   });
@@ -17,7 +18,8 @@ async function request(path, opts = {}) {
 export const api = {
   // reporting
   submitReport: (formData) =>
-    fetch(`${BASE}/api/reports`, { method: 'POST', body: formData }).then(handleJson),
+    fetch(`${BASE}/api/reports`, { method: 'POST', credentials: 'include', body: formData })
+      .then(handleJson),
   getReport: (trackingId) => request(`/reports/${trackingId}`),
   recentReports: () => request(`/reports`),
 
@@ -44,6 +46,18 @@ export const api = {
 
   // misc
   health: () => request('/health'),
+
+  // auth — server sets an HttpOnly session cookie; we never see the token.
+  signup: ({ name, email, password }) =>
+    request('/auth/signup', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
+  verifyOtp: ({ email, code }) =>
+    request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email, code }) }),
+  resendOtp: ({ email }) =>
+    request('/auth/resend-otp', { method: 'POST', body: JSON.stringify({ email }) }),
+  login: ({ email, password }) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  me: () => request('/auth/me'),
 };
 
 async function handleJson(res) {
