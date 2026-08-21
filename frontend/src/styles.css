@@ -140,13 +140,15 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   color: #ffffff;
 }
 .topbar .brand-mark {
-  height: 30px;
+  height: 38px;
   width: auto;
   display: block;
-  /* No background, no chip — the icon floats directly on the navbar. */
+  /* No background, no chip — the icon floats directly on the navbar.
+      Slightly taller than the wordmark (34px) so the pin+heartbeat
+      mark visually outweighs the text next to it. */
 }
 .topbar .brand-wordmark {
-  height: 26px;
+  height: 34px;
   width: auto;
   display: block;
   /* The wordmark PNG has its own white "Pulse" text and red "l" pulse
@@ -319,13 +321,13 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
 }
 .lnav-brand:hover { color: var(--text); }
 .lnav-brand-mark {
-  height: 30px;
+  height: 38px;
   width: auto;
   line-height: 1;
   display: block;
 }
 .lnav-brand-wordmark {
-  height: 28px;
+  height: 34px;
   width: auto;
   line-height: 1;
   display: block;
@@ -1124,13 +1126,13 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   text-decoration: none;
 }
 .auth-brand-mark {
-  height: 28px;
+  height: 36px;
   width: auto;
   line-height: 1;
   display: block;
 }
 .auth-brand-wordmark {
-  height: 26px;
+  height: 32px;
   width: auto;
   line-height: 1;
   display: block;
