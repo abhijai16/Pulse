@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { submitReport, getByTrackingId, listRecent } from './service.js';
+import { listNearbyResponders } from '../dispatch/service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +59,23 @@ reportingRouter.get('/reports/:trackingId', async (req, res, next) => {
 reportingRouter.get('/reports', async (_req, res, next) => {
   try {
     res.json(await listRecent(10));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/responders/nearby?lat=&lng=&limit=  — public mirror of the
+// dispatch router's nearby endpoint so the AlertNow "Nearest responders"
+// panel works for unauthenticated reporters too. Same SQL, same shape.
+reportingRouter.get('/responders/nearby', async (req, res, next) => {
+  try {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 10);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ error: 'lat and lng required' });
+    }
+    res.json(await listNearbyResponders({ lat, lng, limit }));
   } catch (err) {
     next(err);
   }

@@ -85,10 +85,11 @@ export default function PulseBoard() {
         <strong>{Math.round(metrics.avg_response_minutes)} min</strong>
       </p>
 
-      <div className="grid cols-3" style={{ marginBottom: 16 }}>
+      <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Total incidents" v={metrics.total_incidents} />
         <Stat label="Active" v={metrics.active_incidents} />
         <Stat label="Avg response (min)" v={Math.round(metrics.avg_response_minutes)} />
+        <Stat label="Peer assists (month)" v={metrics.peer_assists_this_month} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>

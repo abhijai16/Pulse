@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import ReportForm from './ReportForm.jsx';
+import EmergencyView from './EmergencyView.jsx';
 import TrackingView from './TrackingView.jsx';
 
 export default function AlertNow() {
@@ -21,7 +21,7 @@ export default function AlertNow() {
     <>
       <h1 className="page-title">AlertNow</h1>
       <p className="page-sub">Report an incident on campus. You can submit anonymously.</p>
-      <ReportForm onSubmitted={(id) => setSubmittedId(id)} />
+      <EmergencyView onSubmitted={(id) => setSubmittedId(id)} />
     </>
   );
 }

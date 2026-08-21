@@ -36,6 +36,39 @@ export async function listResponders() {
   return rows;
 }
 
+// FEATURE: Nearest Responders — for the AlertNow "NEAREST RESPONDERS"
+// panel. Computes great-circle distance via the haversine formula in SQL
+// (units: meters) and returns the N closest AVAILABLE responders sorted
+// ascending. Responders without a position (lat/lng NULL) get NULL
+// distance and are pushed to the end so the panel still shows them with
+// no km label rather than hiding them entirely.
+export async function listNearbyResponders({ lat, lng, limit = 3 }) {
+  if (lat == null || lng == null) {
+    const err = new Error('lat and lng required');
+    err.status = 400;
+    throw err;
+  }
+  const { rows } = await query(
+    `SELECT id, name, role, status, phone, lat, lng,
+            CASE
+              WHEN lat IS NULL OR lng IS NULL THEN NULL
+              ELSE 2 * 6371000 * asin(
+                sqrt(
+                  power(sin(radians((lat - $1) / 2)), 2) +
+                  cos(radians($1)) * cos(radians(lat)) *
+                  power(sin(radians((lng - $2) / 2)), 2)
+                )
+              )
+            END AS distance_m
+       FROM responders
+      WHERE status = 'available'
+      ORDER BY (distance_m IS NULL), distance_m ASC NULLS LAST, name
+      LIMIT $3`,
+    [lat, lng, limit]
+  );
+  return rows;
+}
+
 export async function assignResponder({ incidentId, responderId, note = null }) {
   if (!incidentId || !responderId) {
     const err = new Error('incidentId and responderId required');
@@ -77,6 +110,22 @@ export async function updateIncidentStatus(id, status) {
     err.status = 400;
     throw err;
   }
+  // Read previous status so we can guard the credits award against
+  // re-resolves (resolved → resolved is a no-op for credits) and against
+  // resolved → on_scene → resolved cycles (only the fresh-resolve step
+  // awards).
+  const before = await query(
+    `SELECT status, assigned_to FROM incidents WHERE id = $1`,
+    [id]
+  );
+  if (!before.rows[0]) {
+    const err = new Error('incident_not_found');
+    err.status = 404;
+    throw err;
+  }
+  const previousStatus = before.rows[0].status;
+  const isFreshResolve = status === 'resolved' && previousStatus !== 'resolved';
+
   const resolvedAt = status === 'resolved' ? 'NOW()' : 'NULL';
   const { rows } = await query(
     `UPDATE incidents
@@ -85,14 +134,20 @@ export async function updateIncidentStatus(id, status) {
       RETURNING id, tracking_id, status, assigned_to, updated_at, resolved_at`,
     [status, id]
   );
-  if (!rows[0]) {
-    const err = new Error('incident_not_found');
-    err.status = 404;
-    throw err;
-  }
   // free the responder when resolved
   if (status === 'resolved' && rows[0].assigned_to) {
     await query(`UPDATE responders SET status = 'available' WHERE id = $1`, [rows[0].assigned_to]);
+  }
+  // FEATURE: Peer-Response Credits — +1 to every peer pledger for this
+  // incident, but only on the non-resolved → resolved transition. One
+  // UPDATE, no loop. Idempotent thanks to the transition guard above.
+  if (isFreshResolve) {
+    await query(
+      `UPDATE users
+          SET credits = credits + 1
+        WHERE id IN (SELECT user_id FROM responder_pledges WHERE incident_id = $1)`,
+      [id]
+    );
   }
   // fetch tracking_id for the socket fan-out
   const tr = await query(`SELECT tracking_id FROM incidents WHERE id = $1`, [id]);

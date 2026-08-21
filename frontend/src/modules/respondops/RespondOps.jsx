@@ -15,6 +15,10 @@ export default function RespondOps() {
   const [responders, setResponders] = useState([]);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState(null);
+  // FEATURE: Nearby-volunteer pledge state. Stored as { [id]: {count, pledgers} }
+  // so the list-row chip and the dispatch detail block both read from
+  // one source. Lazily populated when the dispatcher opens the detail.
+  const [pledges, setPledges] = useState({});
   const { coords: userCoords, status: geoStatus } = useGeolocation({ fallback: { lat: FALLBACK_CENTER[0], lng: FALLBACK_CENTER[1] } });
   const mapCenter = [userCoords.lat, userCoords.lng];
 
@@ -41,6 +45,19 @@ export default function RespondOps() {
     }
   }
 
+  // Pull pledge state for one incident. Used when the dispatcher
+  // opens the detail card. Failures are non-fatal — the card just
+  // renders without the volunteer block.
+  async function loadPledges(incidentId) {
+    if (!incidentId) return;
+    try {
+      const s = await api.pledges(incidentId);
+      setPledges((prev) => ({ ...prev, [incidentId]: s }));
+    } catch {
+      setPledges((prev) => ({ ...prev, [incidentId]: { count: 0, pledgers: [] } }));
+    }
+  }
+
   useEffect(() => {
     refresh();
     const onNew = () => refresh();
@@ -53,13 +70,32 @@ export default function RespondOps() {
       setIncidents((prev) => prev.map((i) => (i.id === p.id ? { ...i, severity: p.severity } : i)));
       setSelected((cur) => (cur && cur.id === p.id ? { ...cur, severity: p.severity } : cur));
     };
+    // FEATURE: Nearby-volunteer pledge — update the count + name list
+    // for the affected incident in place. No full refresh, no flash.
+    const onVolunteer = (p) => {
+      if (!p?.incidentId) return;
+      setPledges((prev) => ({
+        ...prev,
+        [p.incidentId]: { count: p.count, pledgers: p.pledgers },
+      }));
+    };
     socket.on('incident:severity', onSeverity);
+    socket.on('incident:volunteer_joined', onVolunteer);
     return () => {
       socket.off('incident:new', onNew);
       socket.off('incident:status', onStatus);
       socket.off('incident:severity', onSeverity);
+      socket.off('incident:volunteer_joined', onVolunteer);
     };
   }, []);
+
+  // When the dispatcher picks an incident, fetch its pledge state.
+  useEffect(() => {
+    if (selected?.id && pledges[selected.id] === undefined) {
+      loadPledges(selected.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
 
   async function handleAssign(responderId) {
     if (!selected) return;
@@ -184,7 +220,9 @@ export default function RespondOps() {
             <h3 style={{ marginTop: 0 }}>Incidents</h3>
             <div style={{ maxHeight: 220, overflowY: 'auto' }}>
               {incidents.length === 0 && <div style={{ color: 'var(--muted)' }}>All clear.</div>}
-              {incidents.map((i) => (
+              {incidents.map((i) => {
+                const p = pledges[i.id];
+                return (
                 <div
                   key={i.id}
                   onClick={() => setSelected(i)}
@@ -212,11 +250,29 @@ export default function RespondOps() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {/* FEATURE: Nearby-volunteer chip. Hidden when no
+                        pledges yet (count is undefined or 0) so the
+                        list isn't visually noisy. */}
+                    {p && p.count > 0 && (
+                      <span
+                        title={`${p.count} volunteer${p.count !== 1 ? 's' : ''} en route`}
+                        style={{
+                          fontSize: 11, fontWeight: 600,
+                          padding: '2px 8px', borderRadius: 999,
+                          background: 'rgba(94,177,255,0.15)',
+                          color: 'var(--accent)',
+                          border: '1px solid rgba(94,177,255,0.4)',
+                        }}
+                      >
+                        👥 {p.count}
+                      </span>
+                    )}
                     <span className={`badge ${i.severity}`}>{i.severity}</span>
                     <span className={`badge ${i.status}`}>{i.status}</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -269,6 +325,31 @@ export default function RespondOps() {
                   )}
                 </div>
               </div>
+
+              {/* FEATURE: Volunteers en route. Listens for the
+                  incident:volunteer_joined socket event via the
+                  `pledges` map keyed on incident id, so this updates
+                  live without a refresh. Shows zero state gracefully
+                  (no "volunteers: 0" — just nothing). */}
+              {pledges[selected.id] && pledges[selected.id].count > 0 && (
+                <div style={{
+                  background: 'rgba(80,200,120,0.08)',
+                  border: '1px solid rgba(80,200,120,0.4)',
+                  borderRadius: 8, padding: 12, marginBottom: 14,
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 600, marginBottom: 6 }}>
+                    👥 Volunteers en route ({pledges[selected.id].count})
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text)' }}>
+                    {pledges[selected.id].pledgers.map((p) => p.name).join(', ')}
+                    {pledges[selected.id].count > pledges[selected.id].pledgers.length && (
+                      <span style={{ color: 'var(--muted)' }}>
+                        {' '}and {pledges[selected.id].count - pledges[selected.id].pledgers.length} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {selected.status === 'new' && (
                 <div className="field">

@@ -146,9 +146,36 @@ authRouter.get('/auth/me', async (req, res, next) => {
   try {
     const userId = readSessionUserId(req);
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
-    const { rows } = await query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+    const { rows } = await query('SELECT id, name, email, credits FROM users WHERE id = $1', [userId]);
     if (!rows[0]) return res.status(401).json({ error: 'unauthorized' });
     res.json({ user: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/auth/me/location — record the user's last known position so
+// the 200 m radius query can find them when a nearby incident lands.
+// Throttled to one PUT / 60 s by the caller; the server just stores
+// whatever it's given. Rejected if the user isn't logged in.
+authRouter.put('/auth/me/location', requireAuth, async (req, res, next) => {
+  try {
+    const { lat, lng } = req.body || {};
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return res.status(400).json({ error: 'invalid_location' });
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ error: 'invalid_location' });
+    }
+    await query(
+      `UPDATE users
+          SET last_known_lat = $1,
+              last_known_lng = $2,
+              last_location_at = NOW()
+        WHERE id = $3`,
+      [lat, lng, req.userId],
+    );
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

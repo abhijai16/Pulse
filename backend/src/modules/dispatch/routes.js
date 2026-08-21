@@ -29,6 +29,9 @@ dispatchRouter.get('/responders', async (_req, res, next) => {
   }
 });
 
+// /api/responders/nearby lives in the reporting router (public) so
+// anonymous reporters can see who's closest before submitting.
+
 // POST /api/dispatches  — assign a responder to an incident
 dispatchRouter.post('/dispatches', async (req, res, next) => {
   try {

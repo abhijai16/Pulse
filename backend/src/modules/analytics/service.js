@@ -34,10 +34,20 @@ export async function getMetrics() {
        GROUP BY severity
        ORDER BY n DESC`
   );
+  // FEATURE: Peer-Response Credits — aggregate community engagement on
+  // PulseBoard. Counts pledge-rows (not distinct users) so multiple
+  // pledges across multiple incidents stack, matching the spec wording
+  // "count of total peer-response actions".
+  const r4 = await query(
+    `SELECT COUNT(*)::int AS peer_assists_this_month
+       FROM responder_pledges
+      WHERE created_at >= date_trunc('month', NOW())`
+  );
   return {
     ...r1.rows[0],
     by_category: r2.rows,
     by_severity: r3.rows,
+    peer_assists_this_month: r4.rows[0].peer_assists_this_month,
   };
 }
 

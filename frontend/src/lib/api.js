@@ -58,6 +58,22 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+  reportLocation: (lat, lng) =>
+    request('/auth/me/location', { method: 'PUT', body: JSON.stringify({ lat, lng }) }),
+
+  // community — civilian "I'm responding" pledges
+  pledge: (incidentId) =>
+    request(`/community/incidents/${incidentId}/pledge`, { method: 'POST' }),
+  pledges: (incidentId) =>
+    request(`/community/incidents/${incidentId}/pledges`),
+
+  // profile — the current user's own credit count + recent pledged incidents
+  myContributions: () => request('/profile/me'),
+
+  // emergency — closest available responders for the AlertNow panel.
+  // Public endpoint, no auth needed (anonymous reporters use it too).
+  nearbyResponders: (lat, lng, limit = 3) =>
+    request(`/responders/nearby?lat=${lat}&lng=${lng}&limit=${limit}`),
 };
 
 async function handleJson(res) {

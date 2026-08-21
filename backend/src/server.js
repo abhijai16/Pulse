@@ -11,6 +11,9 @@ import { reportingRouter } from './modules/reporting/routes.js';
 import { dispatchRouter } from './modules/dispatch/routes.js';
 import { analyticsRouter } from './modules/analytics/routes.js';
 import { authRouter, requireAuth } from './modules/auth/routes.js';
+import { communityRouter } from './modules/community/routes.js';
+import { profileRouter } from './modules/profile/routes.js';
+import { notifyNearbyVolunteers } from './modules/community/notify.js';
 import { query } from './db/pool.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,6 +53,8 @@ app.use('/api', authRouter);
 app.use('/api', reportingRouter);
 app.use('/api', requireAuth, dispatchRouter);
 app.use('/api', requireAuth, analyticsRouter);
+app.use('/api', requireAuth, communityRouter);
+app.use('/api', requireAuth, profileRouter);
 
 // 404
 app.use('/api', (_req, res) => res.status(404).json({ error: 'not_found' }));
@@ -68,6 +73,12 @@ import { onReportingEvent, onDispatchEvent, onAnalyticsEvent } from './events.js
 
 onReportingEvent('report:submitted', (incident) => {
   emitIncidentNew(incident);
+  // Nearby-volunteer notifications: only fires for medical/harassment
+  // and only if any verified user is within 200m. Fire-and-forget so
+  // a slow SMTP connection never delays the response to the reporter.
+  notifyNearbyVolunteers(incident).catch((e) =>
+    console.error('[community] notifyNearbyVolunteers failed', e),
+  );
 });
 
 onDispatchEvent('incident:status_changed', (payload) => {

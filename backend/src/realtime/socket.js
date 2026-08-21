@@ -42,3 +42,10 @@ export function emitIncidentSeverity(payload) {
 export function emitBroadcastAlert(broadcast) {
   io?.emit('broadcast:alert', broadcast);
 }
+
+// FEATURE: Nearby-volunteer pledge — when a user taps "I'm responding"
+// on the tracking page, every connected dispatcher console updates its
+// "Volunteers en route" count + name list live, no refresh needed.
+export function emitVolunteerJoined({ incidentId, trackingId, count, pledgers }) {
+  io?.emit('incident:volunteer_joined', { incidentId, trackingId, count, pledgers });
+}

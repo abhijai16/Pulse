@@ -143,7 +143,9 @@ export default function Landing() {
           <div className="lnav-right">
             {ready && user ? (
               <>
-                <span className="lnav-user" title={user.email}>{user.name}</span>
+                <Link to="/profile" className="lnav-user" title={user.email} style={{ textDecoration: 'none' }}>
+                  {user.name}
+                </Link>
                 <button
                   type="button"
                   className="lnav-btn lnav-btn-ghost"

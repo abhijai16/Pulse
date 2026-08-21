@@ -2,12 +2,14 @@ import { Routes, Route, NavLink, Link, useNavigate } from 'react-router-dom';
 import AlertNow from './modules/alertnow/AlertNow.jsx';
 import RespondOps from './modules/respondops/RespondOps.jsx';
 import PulseBoard from './modules/pulseboard/PulseBoard.jsx';
+import Profile from './modules/profile/Profile.jsx';
 import BroadcastListener from './components/BroadcastListener.jsx';
 import BackgroundPattern from './components/BackgroundPattern.jsx';
 import RequireAuth from './components/RequireAuth.jsx';
 import Landing from './pages/Landing.jsx';
 import Auth from './pages/Auth.jsx';
 import { AuthProvider, useAuth } from './lib/useAuth.jsx';
+import { useReportLocation } from './lib/useReportLocation.js';
 
 export default function App() {
   return (
@@ -20,6 +22,7 @@ export default function App() {
           intercepts clicks on the Leaflet maps in RespondOps / PulseBoard. */}
       <BackgroundPattern />
       <BroadcastListener />
+      <LocationReporter />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />
@@ -32,6 +35,10 @@ export default function App() {
         <Route
           path="/admin"
           element={<RequireAuth><Shell><PulseBoard /></Shell></RequireAuth>}
+        />
+        <Route
+          path="/profile"
+          element={<RequireAuth><Shell><Profile /></Shell></RequireAuth>}
         />
       </Routes>
     </AuthProvider>
@@ -53,7 +60,9 @@ function Shell({ children }) {
         <div className="topbar-auth">
           {ready && user ? (
             <>
-              <span className="topbar-user" title={user.email}>{user.name}</span>
+              <Link to="/profile" className="topbar-user" title={user.email} style={{ textDecoration: 'none' }}>
+                {user.name}
+              </Link>
               <button
                 type="button"
                 className="topbar-btn topbar-btn-ghost"
@@ -73,4 +82,13 @@ function Shell({ children }) {
       <main className="page">{children}</main>
     </>
   );
+}
+
+// Background location reporter. Renders nothing — the hook is the
+// component. It pushes the user's lat/lng to the backend every 60s
+// (or 25m of movement, whichever first) so the 200m radius query can
+// find this user when a medical/harassment incident lands nearby.
+function LocationReporter() {
+  useReportLocation();
+  return null;
 }
