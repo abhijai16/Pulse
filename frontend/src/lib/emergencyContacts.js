@@ -7,25 +7,25 @@ export const EMERGENCY_CONTACTS = [
   {
     key: 'security',
     label: 'Campus Security',
-    phone: '+91 12345 67890',
+    phone: '0674-2725113',
     icon: 'shield',
   },
   {
     key: 'medical',
-    label: 'Campus Medical Center',
-    phone: '+91 12345 67891',
+    label: 'KIMS Hospital',
+    phone: '0674-7111000',
     icon: 'cross',
   },
   {
     key: 'fire',
     label: 'Fire Response Team',
-    phone: '+91 12345 67892',
+    phone: '7440070013 ',
     icon: 'flame',
   },
   {
-    key: 'office',
-    label: 'Security Office',
-    phone: '+91 12345 67893',
+    key: 'police',
+    label: 'Women Helpline',
+    phone: '8114380770',
     icon: 'building',
   },
 ];
