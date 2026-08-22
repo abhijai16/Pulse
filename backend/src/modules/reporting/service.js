@@ -9,15 +9,17 @@ import { emitReportingEvent } from '../../events.js';
 // rest. dispatch/analytics never see plaintext unless they go through
 // the API. only the reporting module touches the encryption layer.
 
-export async function submitReport(input) {
+export async function submitReport(input, severityOverride = null) {
   const {
     category,
     description,
     photoUrl = null,
+    mediaUrls = [],
     lat,
     lng,
     locationLabel = null,
     isAnonymous = false,
+    isAcoustic = false,
   } = input;
 
   if (!category || !description || lat == null || lng == null) {
@@ -26,7 +28,15 @@ export async function submitReport(input) {
     throw err;
   }
 
-  const severity = classifySeverity(category, description);
+  // FEATURE: Audio Sentry — deterministic severity override. The audio
+  // module owns the keyword→severity table (FIRE→critical, HELP→high)
+  // because Pulse's generic classifier doesn't know a gunshot is more
+  // urgent than a stalled generator. When the override is provided we
+  // trust it; otherwise the existing classifier runs unchanged.
+  const ALLOWED_SEVERITY = ['low', 'medium', 'high', 'critical'];
+  const severity = severityOverride && ALLOWED_SEVERITY.includes(severityOverride)
+    ? severityOverride
+    : classifySeverity(category, description);
   const trackingId = `PULSE-${uuid().slice(0, 8).toUpperCase()}`;
 
   // AI triage on top of the legacy classifier. returns reasons +
@@ -38,19 +48,28 @@ export async function submitReport(input) {
   const reporterToken = sensitive ? encryptField(description) : null;
   // non-sensitive stuff stays in plaintext — dispatch needs to read it.
 
+  // photo_url is kept for backward-compat (older clients + older rows).
+  // media_urls is the new array; first item wins as the cover photo.
+  const photo = photoUrl || (mediaUrls.length > 0 ? mediaUrls[0] : null);
+  const mediaList = Array.isArray(mediaUrls) ? mediaUrls : [];
+
   const { rows } = await query(
     `INSERT INTO incidents
-       (tracking_id, category, description, photo_url, lat, lng, location_label,
+       (tracking_id, category, description, photo_url, media_urls,
+        lat, lng, location_label,
         severity, is_anonymous, reporter_token,
-        ai_severity, ai_confidence, ai_reasons)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        ai_severity, ai_confidence, ai_reasons,
+        is_acoustic)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      RETURNING id, tracking_id, category, severity, status, created_at,
-               ai_severity, ai_confidence, ai_reasons`,
+               ai_severity, ai_confidence, ai_reasons,
+               photo_url, media_urls, is_acoustic`,
     [
       trackingId,
       category,
       sensitive ? '[encrypted — see reporter_token]' : description,
-      photoUrl,
+      photo,
+      mediaList,
       lat,
       lng,
       locationLabel,
@@ -60,6 +79,7 @@ export async function submitReport(input) {
       ai.severity,
       ai.confidence,
       JSON.stringify(ai.reasons),
+      isAcoustic,
     ]
   );
 
@@ -74,7 +94,8 @@ export async function getByTrackingId(trackingId) {
   const { rows } = await query(
     `SELECT id, tracking_id, category, severity, status, lat, lng, location_label,
             is_anonymous, created_at, updated_at, resolved_at, assigned_to,
-            ai_severity, ai_confidence, ai_reasons
+            ai_severity, ai_confidence, ai_reasons,
+            photo_url, media_urls
        FROM incidents
       WHERE tracking_id = $1`,
     [trackingId]

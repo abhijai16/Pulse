@@ -38,6 +38,14 @@ const MODULES = [
     tagline: 'Analytics & Broadcast',
     desc: 'Incident heatmap, repeated-incident clustering, response-time KPIs, radius-push geofenced alerts, and CSV/PDF exports for campus safety officers.',
   },
+  {
+    key: 'audiosentry',
+    path: '/audio',
+    icon: '🎙️',
+    name: 'Audio Sentry',
+    tagline: 'Acoustic Distress Detection',
+    desc: 'Edge microphone monitoring with continuous speech-to-text keyword analysis. Shouted distress keywords auto-create routed incidents — fire, police, ambulance, or general help — dispatched to the right agency instantly.',
+  },
 ];
 
 // Three feature callouts between hero and the module row. Citizen.com style:
@@ -306,7 +314,7 @@ export default function Landing() {
           <Stat label="Active right now"    value={liveActive} accent="red" urgent />
           <Stat label="Avg response"        value={stats.avgMin != null ? `${stats.avgMin} min` : null} accent="green" />
           <Stat label="Responders on duty"  value={stats.responders} accent="blue" />
-          <Stat label="Modules shipped"     value={3} accent="purple" />
+          <Stat label="Modules shipped"     value={4} accent="purple" />
         </div>
       </section>
 

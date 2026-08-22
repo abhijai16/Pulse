@@ -74,6 +74,15 @@ export const api = {
   // Public endpoint, no auth needed (anonymous reporters use it too).
   nearbyResponders: (lat, lng, limit = 3) =>
     request(`/responders/nearby?lat=${lat}&lng=${lng}&limit=${limit}`),
+
+  // audio — Acoustic distress detection (Audio Sentry).
+  // Public endpoints, no auth — same reasoning as nearbyResponders.
+  voiceDetect: (payload) =>
+    request('/audio/voice-detect', { method: 'POST', body: JSON.stringify(payload) }),
+  simulateAudio: (payload) =>
+    request('/audio/simulate', { method: 'POST', body: JSON.stringify(payload) }),
+  recentAudio: (limit = 8) => request(`/audio/events?limit=${limit}`),
+  audioStats: () => request('/audio/stats'),
 };
 
 async function handleJson(res) {

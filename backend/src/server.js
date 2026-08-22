@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import http from 'node:http';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { initSocket, emitIncidentNew, emitIncidentStatus, emitIncidentSeverity, emitBroadcastAlert } from './realtime/socket.js';
@@ -13,11 +14,29 @@ import { analyticsRouter } from './modules/analytics/routes.js';
 import { authRouter, requireAuth } from './modules/auth/routes.js';
 import { communityRouter } from './modules/community/routes.js';
 import { profileRouter } from './modules/profile/routes.js';
+import { audioRouter } from './modules/audio/routes.js';
 import { notifyNearbyVolunteers } from './modules/community/notify.js';
 import { query } from './db/pool.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Apply schema.sql once on boot so the live DB always has the latest
+// columns/tables. schema.sql uses CREATE TABLE IF NOT EXISTS / ADD COLUMN
+// IF NOT EXISTS / CREATE INDEX IF NOT EXISTS, so it's safe to re-run on
+// every start — new tables land, missing columns get added, and existing
+// rows are untouched. We log loudly if migration fails so the operator
+// notices; the server still starts so existing endpoints keep serving.
+const SCHEMA_PATH = path.join(__dirname, 'db/schema.sql');
+async function autoMigrate() {
+  try {
+    const sql = readFileSync(SCHEMA_PATH, 'utf8');
+    await query(sql);
+    console.log('[server] schema.sql applied (auto-migrate on boot)');
+  } catch (err) {
+    console.error('[server] auto-migrate failed:', err.message);
+  }
+}
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -50,6 +69,11 @@ app.get('/api/health', async (_req, res) => {
 // without login; the rest sit behind requireAuth.
 app.use('/api', authRouter);
 app.use('/api', reportingRouter);
+// Audio Sentry: acoustic distress detection. Open (no requireAuth) so
+// browser live-mic + external sensors can POST keyword triggers
+// without juggling session cookies. Detection data is anonymous-by-
+// design (submitReport is called with isAnonymous: true).
+app.use('/api', audioRouter);
 app.use('/api', requireAuth, dispatchRouter);
 app.use('/api', requireAuth, analyticsRouter);
 app.use('/api', requireAuth, communityRouter);
@@ -92,6 +116,14 @@ onAnalyticsEvent('broadcast:created', (broadcast) => {
   emitBroadcastAlert(broadcast);
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`[pulse] api ready on :${PORT}`);
-});
+// Run auto-migrate BEFORE listen so the new columns (e.g. media_urls)
+// are guaranteed to exist by the time the first request can hit /api/reports.
+// On failure we still start the server — the catch in autoMigrate logs the
+// error, and existing endpoints remain available so the operator can fix
+// the DB without taking the API down.
+(async () => {
+  await autoMigrate();
+  httpServer.listen(PORT, () => {
+    console.log(`[pulse] api ready on :${PORT}`);
+  });
+})();

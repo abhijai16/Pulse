@@ -53,6 +53,13 @@ CREATE TABLE IF NOT EXISTS incidents (
   resolved_at     TIMESTAMPTZ
 );
 
+-- FEATURE: Multi-attachment support for AlertNow reports. The single
+-- photo_url column is kept for back-compat with older rows; media_urls
+-- holds the up-to-4 attachment URLs (mix of image + short video) that
+-- the new multipart endpoint accepts under the 'media' field name.
+ALTER TABLE incidents
+  ADD COLUMN IF NOT EXISTS media_urls TEXT[] NOT NULL DEFAULT '{}';
+
 CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
 CREATE INDEX IF NOT EXISTS idx_incidents_category ON incidents(category);
 CREATE INDEX IF NOT EXISTS idx_incidents_created ON incidents(created_at DESC);
@@ -166,3 +173,56 @@ CREATE INDEX IF NOT EXISTS idx_pledges_user     ON responder_pledges(user_id);
 -- DEFAULT so existing rows are safe on re-run.
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS credits INTEGER NOT NULL DEFAULT 0;
+
+-- ============ Audio Sentry: acoustic distress detection ============
+-- is_acoustic flags incidents that were created by the audio module.
+-- We can't use the description prefix (the description is encrypted
+-- when is_anonymous is true), so a dedicated boolean column is the
+-- cheapest way for the RespondOps UI to render the "🎙 acoustic"
+-- badge without decrypting anything. Default false is safe on re-run.
+ALTER TABLE incidents
+  ADD COLUMN IF NOT EXISTS is_acoustic BOOLEAN NOT NULL DEFAULT false;
+
+-- audio_detection_events is the audit log for every keyword fired by
+-- the live microphone or the simulator. incident_id is a soft FK so
+-- deleting an incident doesn't cascade-delete the audio history (we
+-- want to be able to replay "what did the mic hear before the user
+-- cancelled the report").
+CREATE TABLE IF NOT EXISTS audio_detection_events (
+  id               SERIAL PRIMARY KEY,
+  timestamp        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sensor_location  TEXT NOT NULL,
+  detected_keyword TEXT NOT NULL,
+  confidence_score REAL,
+  audio_level_db   REAL,
+  raw_transcript   TEXT,
+  source           TEXT NOT NULL DEFAULT 'LIVE_MICROPHONE', -- LIVE_MICROPHONE | SIMULATION | EXTERNAL_SENSOR
+  incident_id      INTEGER REFERENCES incidents(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audio_det_ts ON audio_detection_events(timestamp DESC);
+
+-- Keyword directory for the audio engine. Seeded with the default
+-- triggers; ON CONFLICT keeps a re-run idempotent. The active flag
+-- lets an admin disable a keyword without dropping the row.
+CREATE TABLE IF NOT EXISTS audio_keywords (
+  id            SERIAL PRIMARY KEY,
+  word          TEXT UNIQUE NOT NULL,
+  severity      TEXT NOT NULL,            -- low | medium | high | critical
+  target_agency TEXT NOT NULL,
+  active        BOOLEAN NOT NULL DEFAULT true
+);
+
+INSERT INTO audio_keywords (word, severity, target_agency) VALUES
+  ('FIRE',      'critical', 'Fire Station (Dispatch Unit 1)'),
+  ('SMOKE',     'critical', 'Fire Station (Dispatch Unit 1)'),
+  ('BURNING',   'critical', 'Fire Station (Dispatch Unit 1)'),
+  ('POLICE',    'critical', 'Police Department & Rapid Response'),
+  ('GUNSHOT',   'critical', 'Police Department & Rapid Response'),
+  ('INTRUDER',  'critical', 'Police Department & Rapid Response'),
+  ('ATTACK',    'critical', 'Police Department & Rapid Response'),
+  ('AMBULANCE', 'high',     'Campus Hospital & Paramedic Unit'),
+  ('HOSPITAL',  'high',     'Campus Hospital & Paramedic Unit'),
+  ('MEDICAL',   'high',     'Campus Hospital & Paramedic Unit'),
+  ('HELP',      'high',     'Central Emergency Response & Campus Police')
+ON CONFLICT (word) DO NOTHING;

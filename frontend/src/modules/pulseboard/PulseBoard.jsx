@@ -18,6 +18,7 @@ export default function PulseBoard() {
   const [heatmap, setHeatmap] = useState([]);
   const [repeated, setRepeated] = useState([]);
   const [broadcasts, setBroadcasts] = useState([]);
+  const [audioStats, setAudioStats] = useState(null);
   const { coords: userCoords, status: geoStatus } = useGeolocation({
     fallback: { lat: FALLBACK_CENTER[0], lng: FALLBACK_CENTER[1] },
   });
@@ -42,19 +43,30 @@ export default function PulseBoard() {
   const [sending, setSending] = useState(false);
 
   async function refresh() {
-    const [m, h, r, b] = await Promise.all([
-      api.metrics(), api.heatmap(), api.repeated(), api.listBroadcasts(),
+    // Audio stats is best-effort — if the audio module isn't mounted
+    // (shouldn't happen in a full Pulse deploy but guards against
+    // partial boots), the tile just renders "—" instead of crashing.
+    const audioP = api.audioStats().catch(() => null);
+    const [m, h, r, b, a] = await Promise.all([
+      api.metrics(), api.heatmap(), api.repeated(), api.listBroadcasts(), audioP,
     ]);
     setMetrics(m);
     setHeatmap(h);
     setRepeated(r);
     setBroadcasts(b);
+    setAudioStats(a);
   }
 
   useEffect(() => {
     refresh();
     socket.on('broadcast:alert', () => refresh());
-    return () => socket.off('broadcast:alert');
+    // Audio incidents come in as normal `incident:new` events; refresh
+    // here too so the 24h counter ticks up live without a manual reload.
+    socket.on('incident:new', () => refresh());
+    return () => {
+      socket.off('broadcast:alert');
+      socket.off('incident:new');
+    };
   }, []);
 
   async function sendBroadcast(e) {
@@ -85,11 +97,12 @@ export default function PulseBoard() {
         <strong>{Math.round(metrics.avg_response_minutes)} min</strong>
       </p>
 
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
+      <div className="grid cols-5" style={{ marginBottom: 16 }}>
         <Stat label="Total incidents" v={metrics.total_incidents} />
         <Stat label="Active" v={metrics.active_incidents} />
         <Stat label="Avg response (min)" v={Math.round(metrics.avg_response_minutes)} />
         <Stat label="Peer assists (month)" v={metrics.peer_assists_this_month} />
+        <Stat label="🎙 Acoustic (24h)" v={audioStats?.last24h ?? '—'} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>

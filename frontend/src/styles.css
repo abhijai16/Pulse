@@ -1460,3 +1460,797 @@ label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px
   color: var(--muted);
   line-height: 1.5;
 }
+
+/* =====================================================================
+   AlertNow — page background (gradient orbs + faint map texture, same
+   treatment as the Landing hero so the panic page doesn't sit on flat
+   black). pointer-events:none keeps every layer out of the way of
+   clicks on the cards/forms underneath.
+   ===================================================================== */
+.alertnow-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+}
+.alertnow-page::before,
+.alertnow-page::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: -1;
+  animation: orb-float 16s ease-in-out infinite;
+}
+.alertnow-page::before {
+  width: 520px;
+  height: 520px;
+  background: #5eb1ff;
+  top: -180px;
+  left: -160px;
+}
+.alertnow-page::after {
+  width: 420px;
+  height: 420px;
+  background: #ff4d4d;
+  top: 30%;
+  right: -140px;
+  animation-delay: -6s;
+  opacity: 0.16;
+}
+
+/* =====================================================================
+   AlertNow — section cards. Slightly lighter surface than the page base
+   + soft blue border-glow so the panels read as distinct, lifted
+   surfaces rather than blending into the background.
+   ===================================================================== */
+.alertnow-card {
+  background: linear-gradient(180deg, #1f1f24 0%, #1a1a1e 100%);
+  border: 1px solid rgba(94, 177, 255, 0.18);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(94, 177, 255, 0.05),
+    0 0 24px rgba(94, 177, 255, 0.06);
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.alertnow-card:hover {
+  border-color: rgba(94, 177, 255, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 14px 36px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(94, 177, 255, 0.08),
+    0 0 30px rgba(94, 177, 255, 0.10);
+}
+
+/* =====================================================================
+   AlertNow — two-column dashboard grid. Above 1024 px the page renders
+   as a primary action column (left) + a sidebar column (right) so the
+   SOS tiles and the responder/contact panels are all visible above the
+   fold on a laptop. Below 1024 px it collapses back to a single column
+   so the same content still works on tablet/phone.
+   ===================================================================== */
+.alertnow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.alertnow-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;            /* let flex/grid children shrink instead of overflowing */
+}
+@media (max-width: 1024px) {
+  .alertnow-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* =====================================================================
+   AlertNow — "Need emergency help?" row.
+   Each category tile wears a subtle tint matching its icon colour so
+   the four are visually distinguishable at a glance, not just by icon.
+   ===================================================================== */
+.emer-row {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+}
+.emer-row-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.emer-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 8px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--tile-color) 35%, transparent);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--tile-color) 14%, var(--surface)) 0%,
+      color-mix(in srgb, var(--tile-color)  4%, var(--surface)) 100%);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.18s ease,
+              border-color 0.18s ease, background 0.18s ease;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tile-color) 12%, transparent) inset,
+    0 6px 18px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.emer-tile::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 22px var(--tile-glow);
+  opacity: 0.55;
+  transition: opacity 0.18s ease;
+}
+.emer-tile:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--tile-color) 70%, transparent);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--tile-color) 20%, var(--surface)) 0%,
+      color-mix(in srgb, var(--tile-color)  8%, var(--surface)) 100%);
+}
+.emer-tile:hover::before { opacity: 1; }
+.emer-tile:active { transform: translateY(0); }
+
+.emer-tile-icon  { font-size: 26px; line-height: 1; }
+.emer-tile-label { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; margin-top: 4px; }
+.emer-tile-sub   { font-size: 10px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; }
+
+/* Tile gets a brighter border + glow when selected. */
+.emer-tile.is-selected {
+  border-color: var(--tile-color);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--tile-color) 26%, var(--surface)) 0%,
+      color-mix(in srgb, var(--tile-color) 12%, var(--surface)) 100%);
+}
+.emer-tile.is-selected::before { opacity: 1; }
+
+/* Vertical divider sits between the four tiles and the SOS panel. */
+.emer-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 0 4px;
+  position: relative;
+  width: 18px;
+}
+.emer-divider::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 100%);
+  transform: translateX(-50%);
+}
+.emer-divider span {
+  position: relative;
+  background: var(--surface);
+  padding: 4px 2px;
+  font-size: 10px;
+}
+
+/* =====================================================================
+   AlertNow — SOS hero panel. A circular crimson button stacked above
+   "Emergency Assistance / Tap for immediate help" copy. The panel sits
+   to the right of a vertical divider so it reads as its own element,
+   not another category tile.
+   ===================================================================== */
+.emer-sos-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 18px;
+  min-width: 150px;
+}
+.emer-sos {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 77, 77, 0.65);
+  background:
+    radial-gradient(75% 75% at 50% 30%,
+      #ff6a6a 0%,
+      #ff3b30 45%,
+      #b81414 100%);
+  color: #ffffff;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: visible;
+  isolation: isolate;
+  box-shadow:
+    0 8px 22px rgba(255, 59, 48, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.10) inset,
+    0 0 32px rgba(255, 59, 48, 0.45);
+  animation: sos-pulse 2.6s ease-in-out infinite;
+  text-align: center;
+  padding: 0;
+}
+.emer-sos::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(60% 50% at 50% 28%,
+    rgba(255, 255, 255, 0.32) 0%,
+    rgba(255, 255, 255, 0) 70%);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+}
+.emer-sos::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  box-shadow: 0 0 30px rgba(255, 59, 48, 0.55);
+  pointer-events: none;
+  z-index: -1;
+}
+.emer-sos:hover {
+  background:
+    radial-gradient(75% 75% at 50% 30%,
+      #ff7a7a 0%,
+      #ff4530 45%,
+      #c81a1a 100%);
+  box-shadow:
+    0 10px 26px rgba(255, 59, 48, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 0 42px rgba(255, 59, 48, 0.6);
+}
+.emer-sos:active { transform: translateY(1px); }
+.emer-sos:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: none;
+}
+.emer-sos-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 59, 48, 0.45);
+  pointer-events: none;
+  animation: sos-ring 2.6s ease-out infinite;
+  z-index: -1;
+}
+.emer-sos-label {
+  position: relative;
+  z-index: 1;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  line-height: 1;
+}
+.emer-sos-meta {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.emer-sos-help {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff7a7a;
+  letter-spacing: 0.3px;
+}
+.emer-sos-tap {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.4px;
+}
+
+@keyframes sos-pulse {
+  0%, 100% {
+    box-shadow:
+      0 8px 22px rgba(255, 59, 48, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.10) inset,
+      0 0 32px rgba(255, 59, 48, 0.45);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 10px 26px rgba(255, 59, 48, 0.50),
+      0 0 0 1px rgba(255, 255, 255, 0.18) inset,
+      0 0 52px rgba(255, 59, 48, 0.65);
+    transform: scale(1.04);
+  }
+}
+@keyframes sos-ring {
+  0%   { transform: scale(0.85); opacity: 0.75; }
+  70%  { transform: scale(1.30); opacity: 0; }
+  100% { transform: scale(1.30); opacity: 0; }
+}
+
+/* Crimson CTA used inside the SOS confirmation dialog. Same colour
+   family as .emer-sos but rectangular + non-pulsing, since it lives
+   inside a modal where the pulse would be visually noisy. */
+.emer-sos-confirm {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 77, 77, 0.55);
+  background:
+    radial-gradient(120% 120% at 50% 0%,
+      #ff6a6a 0%,
+      #ff3b30 45%,
+      #c41a1a 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow:
+    0 6px 18px rgba(255, 59, 48, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.10) inset;
+  transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+}
+.emer-sos-confirm:hover {
+  background:
+    radial-gradient(120% 120% at 50% 0%,
+      #ff7a7a 0%,
+      #ff4530 45%,
+      #d22020 100%);
+  box-shadow:
+    0 8px 22px rgba(255, 59, 48, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+}
+.emer-sos-confirm:active { transform: translateY(1px); }
+.emer-sos-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =====================================================================
+   AlertNow — Nearest responders rows.
+   ===================================================================== */
+.emer-resp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+.emer-resp-row:last-child { margin-bottom: 0; }
+.emer-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0c0f14;
+  flex-shrink: 0;
+}
+.emer-resp-meta { flex: 1; min-width: 0; }
+.emer-resp-name { font-weight: 600; font-size: 14px; }
+.emer-resp-team { font-size: 12px; color: var(--muted); }
+.emer-resp-right { text-align: right; }
+.emer-resp-distance { font-size: 12px; font-weight: 600; color: var(--accent); }
+.emer-resp-status {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+.emer-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 6px #2ecc71;
+}
+.emer-call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #06080c;
+  font-size: 14px;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.emer-call-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
+.emer-call-btn-ghost {
+  width: auto;
+  height: auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(94, 177, 255, 0.12);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.emer-call-btn-ghost:hover { background: rgba(94, 177, 255, 0.22); color: var(--accent); }
+
+/* =====================================================================
+   AlertNow — Emergency contacts. Each entry gets a coloured icon chip
+   (matching its category colour) and a bit more breathing room so the
+   list doesn't read as a dense block.
+   ===================================================================== */
+.emer-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.emer-contact-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.emer-contact-row:last-child { margin-bottom: 0; }
+.emer-contact-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.emer-contact-icon-shield   { background: rgba(94, 177, 255, 0.18);  border-color: rgba(94, 177, 255, 0.4);  color: #cbe5ff; }
+.emer-contact-icon-cross    { background: rgba(255, 51, 102, 0.18);  border-color: rgba(255, 51, 102, 0.4);  color: #ffd1de; }
+.emer-contact-icon-flame    { background: rgba(255, 122, 69, 0.18);  border-color: rgba(255, 122, 69, 0.4);  color: #ffd9c7; }
+.emer-contact-icon-building { background: rgba(245, 166, 35, 0.18);  border-color: rgba(245, 166, 35, 0.4);  color: #ffe5b3; }
+.emer-contact-label {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+}
+.emer-contact-phone {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stack to a single column under 720 px so the SOS button doesn't get
+   squeezed on phones. Tiles go to a 2-col grid, the divider becomes
+   horizontal, and the SOS panel sits below. */
+@media (max-width: 720px) {
+  .emer-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .emer-row-tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .emer-divider {
+    width: 100%;
+    height: 18px;
+  }
+  .emer-divider::before {
+    top: 50%;
+    left: 8px;
+    right: 8px;
+    bottom: auto;
+    width: auto;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.18) 50%,
+      transparent 100%);
+    transform: translateY(-50%);
+  }
+  .emer-divider span {
+    background: transparent;
+  }
+  .emer-sos-panel {
+    padding: 4px 0 0 0;
+  }
+}
+
+/* =====================================================================
+   AlertNow — Location picker. Compact card that shows the captured
+   lat/lng + a source chip (GPS / fallback / manual) + a refresh button,
+   and lets the reporter override the label with a free-text place.
+   ===================================================================== */
+.emer-location {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(94, 177, 255, 0.06);
+  border: 1px solid rgba(94, 177, 255, 0.22);
+  border-radius: 10px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.emer-location:hover {
+  border-color: rgba(94, 177, 255, 0.36);
+}
+.emer-location-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: rgba(94, 177, 255, 0.14);
+  border: 1px solid rgba(94, 177, 255, 0.30);
+  color: #cbe5ff;
+  flex-shrink: 0;
+  align-self: center;
+}
+.emer-location-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.emer-location-coords {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.emer-coord-val {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.emer-coord-source {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.emer-coord-source-gps {
+  color: #2ecc71;
+  background: rgba(46, 204, 113, 0.10);
+  border-color: rgba(46, 204, 113, 0.30);
+}
+.emer-coord-source-fallback {
+  color: #f5a623;
+  background: rgba(245, 166, 35, 0.10);
+  border-color: rgba(245, 166, 35, 0.35);
+}
+.emer-coord-source-manual {
+  color: var(--accent);
+  background: rgba(94, 177, 255, 0.10);
+  border-color: rgba(94, 177, 255, 0.35);
+}
+.emer-location-acc {
+  font-size: 11px;
+  color: var(--muted);
+}
+.emer-location-input {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+.emer-location-input:focus {
+  outline: none;
+  border-color: rgba(94, 177, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(94, 177, 255, 0.12);
+}
+.emer-location-refresh {
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.4s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.emer-location-refresh:hover:not(:disabled) {
+  background: rgba(94, 177, 255, 0.16);
+  border-color: rgba(94, 177, 255, 0.40);
+  transform: rotate(180deg);
+}
+.emer-location-refresh:disabled {
+  animation: emer-refresh-spin 1.1s linear infinite;
+  color: var(--muted);
+}
+@keyframes emer-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* =====================================================================
+   AlertNow — Attachment dropzone + grid of preview chips.
+   The dropzone is the visual anchor; the chip grid pops below it as
+   the user attaches files. Image thumbnails come from object URLs;
+   videos use a 🎬 glyph + the filename + size so we don't have to
+   autoplay anything.
+   ===================================================================== */
+.emer-attach-hint {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.emer-attach {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px dashed rgba(94, 177, 255, 0.35);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg,
+      rgba(94, 177, 255, 0.05) 0%,
+      rgba(94, 177, 255, 0.02) 100%);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.emer-attach:hover {
+  border-color: rgba(94, 177, 255, 0.55);
+  background:
+    linear-gradient(180deg,
+      rgba(94, 177, 255, 0.10) 0%,
+      rgba(94, 177, 255, 0.04) 100%);
+}
+.emer-attach.is-drag {
+  border-color: var(--accent);
+  background: rgba(94, 177, 255, 0.16);
+  transform: scale(1.005);
+}
+.emer-attach.is-full {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.emer-attach-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(94, 177, 255, 0.16);
+  border: 1px solid rgba(94, 177, 255, 0.40);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.emer-attach-text { flex: 1; min-width: 0; }
+.emer-attach-title { font-weight: 600; font-size: 13px; }
+.emer-attach-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.emer-attach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.emer-attach-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  position: relative;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.emer-attach-chip:hover {
+  border-color: rgba(94, 177, 255, 0.30);
+  background: rgba(255, 255, 255, 0.05);
+}
+.emer-attach-chip-image {
+  border-color: rgba(255, 51, 102, 0.18);
+}
+.emer-attach-chip-video {
+  border-color: rgba(255, 122, 69, 0.22);
+}
+.emer-attach-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #0c0f14;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.emer-attach-thumb-video {
+  display: grid;
+  place-items: center;
+  background: rgba(255, 122, 69, 0.16);
+  border-color: rgba(255, 122, 69, 0.35);
+  color: #ffd9c7;
+  font-size: 18px;
+}
+.emer-attach-meta {
+  flex: 1;
+  min-width: 0;
+}
+.emer-attach-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.emer-attach-size {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.emer-attach-remove {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.emer-attach-remove:hover {
+  background: rgba(255, 77, 77, 0.22);
+  color: #ffb3b3;
+}

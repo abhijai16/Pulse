@@ -16,7 +16,7 @@ export async function listActiveIncidents(statusFilter = 'active') {
   }
   const { rows } = await query(
     `SELECT id, tracking_id, category, description, severity, status, lat, lng,
-            location_label, is_anonymous, assigned_to, created_at, updated_at,
+            location_label, is_anonymous, is_acoustic, assigned_to, created_at, updated_at,
             ai_severity, ai_confidence, ai_reasons
        FROM incidents
        ${where}
@@ -39,6 +39,13 @@ export async function listResponders() {
 // haversine in SQL, returns the N closest AVAILABLE responders in
 // meters. responders without a position get NULL distance and get
 // pushed to the end so they still show up, just with no km label.
+//
+// Implementation note: we wrap the SELECT in a CTE (rather than
+// referencing the `distance_m` alias directly in ORDER BY) because
+// older PG query-planner paths surfaced "column distance_m does not
+// exist" against this exact SELECT when the alias wasn't materialised
+// by a subquery boundary. The CTE makes the alias resolvable in the
+// outer ORDER BY on every supported PG version.
 export async function listNearbyResponders({ lat, lng, limit = 3 }) {
   if (lat == null || lng == null) {
     const err = new Error('lat and lng required');
@@ -46,19 +53,23 @@ export async function listNearbyResponders({ lat, lng, limit = 3 }) {
     throw err;
   }
   const { rows } = await query(
-    `SELECT id, name, role, status, phone, lat, lng,
-            CASE
-              WHEN lat IS NULL OR lng IS NULL THEN NULL
-              ELSE 2 * 6371000 * asin(
-                sqrt(
-                  power(sin(radians((lat - $1) / 2)), 2) +
-                  cos(radians($1)) * cos(radians(lat)) *
-                  power(sin(radians((lng - $2) / 2)), 2)
+    `WITH ranked AS (
+       SELECT id, name, role, status, phone, lat, lng,
+              CASE
+                WHEN lat IS NULL OR lng IS NULL THEN NULL
+                ELSE 2 * 6371000 * asin(
+                  sqrt(
+                    power(sin(radians((lat - $1) / 2)), 2) +
+                    cos(radians($1)) * cos(radians(lat)) *
+                    power(sin(radians((lng - $2) / 2)), 2)
+                  )
                 )
-              )
-            END AS distance_m
-       FROM responders
-      WHERE status = 'available'
+              END AS distance_m
+         FROM responders
+        WHERE status = 'available'
+     )
+     SELECT id, name, role, status, phone, lat, lng, distance_m
+       FROM ranked
       ORDER BY (distance_m IS NULL), distance_m ASC NULLS LAST, name
       LIMIT $3`,
     [lat, lng, limit]

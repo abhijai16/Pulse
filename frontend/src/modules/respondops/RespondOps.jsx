@@ -5,6 +5,7 @@ import { socket } from '../../lib/socket.js';
 import { useGeolocation } from '../../lib/useGeolocation.js';
 import { makeCategoryIcon, makeSelfIcon, categoryColor } from '../../lib/mapIcons.js';
 import MapLegend from '../../components/MapLegend.jsx';
+import AudioSentrySimulator from '../audiosentry/AudioSentrySimulator.jsx';
 
 // Fallback only used if the browser denies / can't resolve geolocation.
 // (Demo dataset is anchored at Mumbai coordinates.)
@@ -237,7 +238,28 @@ export default function RespondOps() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{i.category}</div>
+                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                      {i.category}
+                      {/* Acoustic Source badge — flagged by the audio
+                          module on submission. Doesn't rely on the
+                          description text (which is encrypted for
+                          anonymous acoustic incidents). */}
+                      {i.is_acoustic && (
+                        <span
+                          title="Triggered by Audio Sentry microphone / simulator"
+                          style={{
+                            marginLeft: 8, fontSize: 10, fontWeight: 700,
+                            padding: '2px 6px', borderRadius: 4,
+                            background: 'var(--accent-soft)',
+                            color: 'var(--accent)',
+                            border: '1px solid rgba(94,177,255,0.35)',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          🎙 acoustic
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{i.location_label || '—'}</div>
                     {/* FEATURE 1: AI triage hint on the row */}
                     {i.ai_severity && (
@@ -395,6 +417,15 @@ export default function RespondOps() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Acoustic simulation — embeds the Audio Sentry simulator so
+              a dispatcher can demo the keyword pipeline without leaving
+              the console. The resulting incident lands on the map above
+              via the existing `incident:new` Socket.io listener. */}
+          <div className="card" style={{ marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>🎙 Acoustic simulation</h3>
+            <AudioSentrySimulator />
           </div>
         </div>
       </div>

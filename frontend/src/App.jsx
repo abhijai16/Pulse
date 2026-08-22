@@ -3,6 +3,7 @@ import AlertNow from './modules/alertnow/AlertNow.jsx';
 import RespondOps from './modules/respondops/RespondOps.jsx';
 import PulseBoard from './modules/pulseboard/PulseBoard.jsx';
 import Profile from './modules/profile/Profile.jsx';
+import AudioSentry from './modules/audiosentry/AudioSentry.jsx';
 import BroadcastListener from './components/BroadcastListener.jsx';
 import BackgroundPattern from './components/BackgroundPattern.jsx';
 import RequireAuth from './components/RequireAuth.jsx';
@@ -40,6 +41,10 @@ export default function App() {
           path="/profile"
           element={<RequireAuth><Shell><Profile /></Shell></RequireAuth>}
         />
+        <Route
+          path="/audio"
+          element={<RequireAuth><Shell><AudioSentry /></Shell></RequireAuth>}
+        />
       </Routes>
     </AuthProvider>
   );
@@ -61,6 +66,7 @@ function Shell({ children }) {
         <nav>
           <NavLink to="/report" className={({ isActive }) => isActive ? 'active' : ''}>Report</NavLink>
           <NavLink to="/ops" className={({ isActive }) => isActive ? 'active' : ''}>Dispatch</NavLink>
+          <NavLink to="/audio" className={({ isActive }) => isActive ? 'active' : ''}>Audio</NavLink>
           <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>Admin</NavLink>
         </nav>
         <div className="topbar-auth">
